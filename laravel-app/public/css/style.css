@@ -12719,7 +12719,6 @@ label {
     margin: 0rem 0rem 0rem 0rem; }
   .sidebar-right .tab-content {
     padding: 1.25rem 1.25rem 0;
-    min-height: 480px;
     background: #fff; }
     .sidebar-right .tab-content .tab-pane .admin-settings .row > div {
       margin-bottom: 1.25rem; }
@@ -12832,12 +12831,21 @@ label {
   .sidebar-right #primary_color_1 + label {
     border: 0.0625rem solid #c4c4c4; }
   .sidebar-right.style-1 {
-    height: 100vh;
-    width: 15.625rem;
-    margin-top: 0;
-    right: -15.625rem; }
-    .sidebar-right.style-1 .sidebar-right-inner {
-      background: #fff; }
+  height: 100vh;
+  width: 24rem;
+  margin-top: 0;
+  right: -24rem;
+  overflow: visible; }
+  .sidebar-right.style-1 .sidebar-right-inner {
+    background: #fff;
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 5rem; }
+  .sidebar-right.style-1 .note-text {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px); }
     .sidebar-right.style-1 .sidebar-right-trigger {
       top: 12.4rem; }
     .sidebar-right.style-1.show {

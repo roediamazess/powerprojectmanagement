@@ -1,6 +1,11 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Tables\UserManagementController;
+use App\Http\Controllers\Tables\PartnersController;
+use App\Http\Controllers\Tables\PartnerSetupController;
+use App\Http\Controllers\Tables\ProjectsController;
+use App\Http\Controllers\Tables\ProjectSetupController;
 use App\Support\TemplatePage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +24,29 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/tables/user-management', [UserManagementController::class, 'index'])->middleware('permission:user_management.view')->name('tables.user-management.index');
+    Route::post('/tables/user-management', [UserManagementController::class, 'store'])->middleware('permission:user_management.create')->name('tables.user-management.store');
+    Route::put('/tables/user-management/{user}', [UserManagementController::class, 'update'])->middleware('permission:user_management.update')->name('tables.user-management.update');
+    Route::delete('/tables/user-management/{user}', [UserManagementController::class, 'destroy'])->middleware('permission:user_management.delete')->name('tables.user-management.destroy');
+    Route::post('/tables/user-management/permissions', [UserManagementController::class, 'updateRolePermissions'])->middleware('permission:access_control.manage')->name('tables.user-management.permissions');
+    Route::get('/tables/partners', [PartnersController::class, 'index'])->middleware('permission:partners.view')->name('tables.partners.index');
+    Route::post('/tables/partners', [PartnersController::class, 'store'])->middleware('permission:partners.create')->name('tables.partners.store');
+    Route::put('/tables/partners/{partner}', [PartnersController::class, 'update'])->middleware('permission:partners.update')->name('tables.partners.update');
+    Route::delete('/tables/partners/{partner}', [PartnersController::class, 'destroy'])->middleware('permission:partners.delete')->name('tables.partners.destroy');
+    Route::get('/tables/partner-setup', [PartnerSetupController::class, 'index'])->middleware('permission:partner_setup.view')->name('tables.partner-setup.index');
+    Route::post('/tables/partner-setup', [PartnerSetupController::class, 'store'])->middleware('permission:partner_setup.create')->name('tables.partner-setup.store');
+    Route::put('/tables/partner-setup/{option}', [PartnerSetupController::class, 'update'])->middleware('permission:partner_setup.update')->name('tables.partner-setup.update');
+    Route::delete('/tables/partner-setup/{option}', [PartnerSetupController::class, 'destroy'])->middleware('permission:partner_setup.delete')->name('tables.partner-setup.destroy');
+Route::get('/tables/projects', [ProjectsController::class, 'index'])->middleware('permission:projects.view')->name('tables.projects.index');
+    Route::post('/tables/projects', [ProjectsController::class, 'store'])->middleware('permission:projects.create')->name('tables.projects.store');
+    Route::put('/tables/projects/{project}', [ProjectsController::class, 'update'])->middleware('permission:projects.update')->name('tables.projects.update');
+    Route::delete('/tables/projects/{project}', [ProjectsController::class, 'destroy'])->middleware('permission:projects.delete')->name('tables.projects.destroy');
+    Route::get('/tables/project-setup', [ProjectSetupController::class, 'index'])->middleware('permission:project_setup.view')->name('tables.project-setup.index');
+    Route::post('/tables/project-setup', [ProjectSetupController::class, 'store'])->middleware('permission:project_setup.create')->name('tables.project-setup.store');
+    Route::put('/tables/project-setup/{option}', [ProjectSetupController::class, 'update'])->middleware('permission:project_setup.update')->name('tables.project-setup.update');
+    Route::delete('/tables/project-setup/{option}', [ProjectSetupController::class, 'destroy'])->middleware('permission:project_setup.delete')->name('tables.project-setup.destroy');
+
+
     Route::get('/projects', function () {
         return Inertia::render('Projects/Index', [
             'html' => TemplatePage::fragment('project-page.html'),

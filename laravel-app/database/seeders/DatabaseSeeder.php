@@ -23,7 +23,17 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Default Tenant']
         );
 
-        foreach (['super-admin', 'tenant-admin', 'member', 'external-client'] as $roleName) {
+        foreach ([
+            'super-admin',
+            'tenant-admin',
+            'member',
+            'external-client',
+            'Administrator',
+            'Management',
+            'Admin Officer',
+            'User',
+            'Partner',
+        ] as $roleName) {
             Role::query()->firstOrCreate(
                 ['name' => $roleName, 'guard_name' => 'web'],
                 ['name' => $roleName, 'guard_name' => 'web']

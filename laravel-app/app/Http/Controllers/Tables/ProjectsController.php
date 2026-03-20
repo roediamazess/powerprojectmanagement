@@ -1,0 +1,403 @@
+<?php
+
+namespace App\Http\Controllers\Tables;
+
+use App\Http\Controllers\Controller;
+use App\Models\Partner;
+use App\Models\Project;
+use App\Models\ProjectSetupOption;
+use App\Models\ProjectPicAssignment;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class ProjectsController extends Controller
+{
+    private const ASSIGNMENT_OPTIONS = [
+        '',
+        'Leader',
+        'Assist',
+    ];
+
+    private const PROJECT_INFORMATION_OPTIONS = [
+        'Request',
+        'Submission',
+    ];
+
+    private const PIC_ASSIGNMENT_OPTIONS = [
+        'Assignment',
+        'Request',
+    ];
+
+    private const SETUP_CATEGORIES = [
+        'type',
+        'status',
+    ];
+
+    public function index(): Response
+    {
+        $projects = Project::query()
+            ->with(['picAssignments' => fn ($q) => $q->orderBy('start_date')->orderBy('id')])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Project $p) => [
+                'id' => $p->id,
+                'cnc_id' => $p->cnc_id,
+                'pic_user_id' => $p->pic_user_id,
+                'pic_name' => $p->pic_name,
+                'pic_email' => $p->pic_email,
+                'pic_assignments' => $p->picAssignments->map(fn ($a) => [
+                    'id' => $a->id,
+                    'pic_user_id' => $a->pic_user_id,
+                    'pic_name' => $a->pic_name,
+                    'pic_email' => $a->pic_email,
+                    'start_date' => $a->start_date?->toDateString(),
+                    'end_date' => $a->end_date?->toDateString(),
+                ])->values(),
+                'pic_summary' => $p->picAssignments->pluck('pic_name')->filter()->unique()->values()->implode(', '),
+                'partner_id' => $p->partner_id,
+                'partner_name' => $p->partner_name,
+                'project_name' => $p->project_name,
+                'assignment' => $p->assignment,
+                'project_information' => $p->project_information,
+                'pic_assignment' => $p->pic_assignment,
+                'type' => $p->type,
+                'start_date' => $p->start_date?->toDateString(),
+                'end_date' => $p->end_date?->toDateString(),
+                'total_days' => $p->total_days,
+                'status' => $p->status,
+                'handover_official_report' => $p->handover_official_report?->toDateString(),
+                'handover_days' => $p->handover_days,
+                'kpi2_pic' => $p->kpi2_pic,
+                'check_official_report' => $p->check_official_report?->toDateString(),
+                'check_days' => $p->check_days,
+                'kpi2_officer' => $p->kpi2_officer,
+                'point_ach' => $p->point_ach,
+                'point_req' => $p->point_req,
+                'percentage_of_point' => $p->percentage_of_point,
+                'validation_date' => $p->validation_date?->toDateString(),
+                'validation_days' => $p->validation_days,
+                'kpi2_okr' => $p->kpi2_okr,
+                'spreadsheet_id' => $p->spreadsheet_id,
+                'spreadsheet_url' => $p->spreadsheet_url,
+                'activity_sent' => $p->activity_sent?->toISOString(),
+                's1_estimation_date' => $p->s1_estimation_date?->toDateString(),
+                's1_over_days' => $p->s1_over_days,
+                's1_count_emails_sent' => $p->s1_count_emails_sent,
+                's2_email_sent' => $p->s2_email_sent,
+                's3_email_sent' => $p->s3_email_sent,
+            ])
+            ->values();
+
+        $partners = Partner::query()
+            ->orderBy('name')
+            ->get(['id', 'cnc_id', 'name', 'status'])
+            ->map(fn (Partner $p) => [
+                'id' => $p->id,
+                'cnc_id' => $p->cnc_id,
+                'name' => $p->name,
+                'status' => $p->status,
+            ])
+            ->values();
+
+        $users = User::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'full_name', 'email', 'status', 'tier'])
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'full_name' => $u->full_name,
+                'email' => $u->email,
+                'status' => $u->status,
+                'tier' => $u->tier,
+            ])
+            ->values();
+
+        $setupOptions = ProjectSetupOption::query()
+            ->whereIn('category', self::SETUP_CATEGORIES)
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('category')
+            ->map(fn ($items) => $items->map(fn ($o) => ['name' => $o->name, 'status' => $o->status])->values())
+            ->toArray();
+
+        return Inertia::render('Tables/Projects/Index', [
+            'projects' => $projects,
+            'partners' => $partners,
+            'users' => $users,
+            'setupOptions' => $setupOptions,
+            'assignmentOptions' => self::ASSIGNMENT_OPTIONS,
+            'projectInformationOptions' => self::PROJECT_INFORMATION_OPTIONS,
+            'picAssignmentOptions' => self::PIC_ASSIGNMENT_OPTIONS,
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $this->validateProject($request);
+
+        $picAssignments = $this->normalizePicAssignments($data);
+        unset($data['pic_assignments']);
+
+        $project = Project::query()->create($this->enrichAndCompute($data));
+        $this->syncPicAssignments($project, $picAssignments);
+
+        return redirect()->route('tables.projects.index');
+    }
+
+    public function update(Request $request, Project $project): RedirectResponse
+    {
+        $data = $this->validateProject($request);
+
+        $picAssignments = $this->normalizePicAssignments($data);
+        unset($data['pic_assignments']);
+
+        $project->update($this->enrichAndCompute($data));
+        $this->syncPicAssignments($project, $picAssignments);
+
+        return redirect()->route('tables.projects.index');
+    }
+
+    public function destroy(Request $request, Project $project): RedirectResponse
+    {
+        $project->delete();
+
+        return redirect()->route('tables.projects.index');
+    }
+
+    private function validateProject(Request $request): array
+    {
+        $rules = [
+            'cnc_id' => ['nullable', 'string', 'max:50'],
+            'pic_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'partner_id' => ['nullable', 'integer', 'exists:partners,id'],
+            'project_name' => ['nullable', 'string'],
+            'assignment' => ['nullable', 'string', Rule::in(self::ASSIGNMENT_OPTIONS)],
+            'project_information' => ['required', 'string', Rule::in(self::PROJECT_INFORMATION_OPTIONS)],
+            'pic_assignment' => ['required', 'string', Rule::in(self::PIC_ASSIGNMENT_OPTIONS)],
+            'type' => ['nullable', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'status' => ['nullable', 'string', 'max:255'],
+            'handover_official_report' => ['nullable', 'date'],
+            'kpi2_pic' => ['nullable', 'string'],
+            'check_official_report' => ['nullable', 'date'],
+            'check_days' => ['nullable', 'string'],
+            'kpi2_officer' => ['nullable', 'string'],
+            'point_ach' => ['nullable', 'integer'],
+            'point_req' => ['nullable', 'integer'],
+            'validation_date' => ['nullable', 'date'],
+            'kpi2_okr' => ['nullable', 'string'],
+            'spreadsheet_id' => ['nullable', 'string'],
+            'spreadsheet_url' => ['nullable', 'string'],
+            'activity_sent' => ['nullable', 'date'],
+            's1_estimation_date' => ['nullable', 'date'],
+            's1_over_days' => ['nullable', 'string'],
+            's1_count_emails_sent' => ['nullable', 'string'],
+            's2_email_sent' => ['nullable', 'string'],
+            's3_email_sent' => ['nullable', 'string'],
+            'pic_assignments' => ['nullable', 'array'],
+            'pic_assignments.*.pic_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'pic_assignments.*.start_date' => ['nullable', 'date'],
+            'pic_assignments.*.end_date' => ['nullable', 'date'],
+        ];
+
+        $validator = Validator::make($request->all(), $rules);
+
+        $validator->after(function ($validator) use ($request) {
+            $data = $request->all();
+            $projectStartRaw = $data['start_date'] ?? null;
+            $projectEndRaw = $data['end_date'] ?? null;
+
+            $assignments = $data['pic_assignments'] ?? [];
+            if (! is_array($assignments)) {
+                $assignments = [];
+            }
+
+            $hasAnyPicRow = collect($assignments)->contains(function ($r) {
+                if (! is_array($r)) return false;
+                return ! empty($r['pic_user_id']) || ! empty($r['start_date']) || ! empty($r['end_date']);
+            });
+
+            if ($hasAnyPicRow && (! $projectStartRaw || ! $projectEndRaw)) {
+                if (! $projectStartRaw) {
+                    $validator->errors()->add('start_date', 'Wajib diisi jika ada PIC periode.');
+                }
+                if (! $projectEndRaw) {
+                    $validator->errors()->add('end_date', 'Wajib diisi jika ada PIC periode.');
+                }
+                return;
+            }
+
+            if (! $projectStartRaw || ! $projectEndRaw) {
+                return;
+            }
+
+            try {
+                $projectStart = Carbon::parse($projectStartRaw)->startOfDay();
+                $projectEnd = Carbon::parse($projectEndRaw)->startOfDay();
+            } catch (\Throwable $e) {
+                return;
+            }
+
+            foreach ($assignments as $i => $row) {
+                if (! is_array($row)) continue;
+
+                $rowStartRaw = $row['start_date'] ?? null;
+                $rowEndRaw = $row['end_date'] ?? null;
+                $rowPicUserId = $row['pic_user_id'] ?? null;
+
+                if (! empty($rowPicUserId) && ! $rowStartRaw) {
+                    $validator->errors()->add("pic_assignments.{$i}.start_date", 'Wajib diisi jika PIC dipilih.');
+                }
+
+                if (! empty($rowPicUserId) && ! $rowEndRaw) {
+                    $validator->errors()->add("pic_assignments.{$i}.end_date", 'Wajib diisi jika PIC dipilih.');
+                }
+
+
+                $rowStart = null;
+                $rowEnd = null;
+
+                try {
+                    if ($rowStartRaw) $rowStart = Carbon::parse($rowStartRaw)->startOfDay();
+                    if ($rowEndRaw) $rowEnd = Carbon::parse($rowEndRaw)->startOfDay();
+                } catch (\Throwable $e) {
+                    continue;
+                }
+
+                if ($rowStart && ($rowStart->lt($projectStart) || $rowStart->gt($projectEnd))) {
+                    $validator->errors()->add("pic_assignments.{$i}.start_date", 'Tidak boleh di luar periode project.');
+                }
+
+                if ($rowEnd && ($rowEnd->lt($projectStart) || $rowEnd->gt($projectEnd))) {
+                    $validator->errors()->add("pic_assignments.{$i}.end_date", 'Tidak boleh di luar periode project.');
+                }
+
+                if ($rowStart && $rowEnd && $rowStart->gt($rowEnd)) {
+                    $validator->errors()->add("pic_assignments.{$i}.end_date", 'End Date tidak boleh sebelum Start Date.');
+                }
+            }
+        });
+
+        return $validator->validate();
+    }
+
+
+    private function normalizePicAssignments(array $data): array
+    {
+        $items = $data['pic_assignments'] ?? null;
+
+        if (is_array($items) && count($items) > 0) {
+            return collect($items)
+                ->filter(fn ($r) => is_array($r))
+                ->map(fn ($r) => [
+                    'pic_user_id' => $r['pic_user_id'] ?? null,
+                    'start_date' => $r['start_date'] ?? null,
+                    'end_date' => $r['end_date'] ?? null,
+                ])
+                ->values()
+                ->all();
+        }
+
+        if (! empty($data['pic_user_id'])) {
+            return [[
+                'pic_user_id' => $data['pic_user_id'],
+                'start_date' => $data['start_date'] ?? null,
+                'end_date' => $data['end_date'] ?? null,
+            ]];
+        }
+
+        return [];
+    }
+
+    private function syncPicAssignments(Project $project, array $assignments): void
+    {
+        $project->picAssignments()->delete();
+
+        foreach ($assignments as $a) {
+            $user = null;
+            if (! empty($a['pic_user_id'])) {
+                $user = User::query()->find($a['pic_user_id']);
+            }
+
+            ProjectPicAssignment::query()->create([
+                'project_id' => $project->id,
+                'pic_user_id' => $a['pic_user_id'] ?? null,
+                'pic_name' => $user?->name,
+                'pic_email' => $user?->email,
+                'start_date' => $a['start_date'] ?? null,
+                'end_date' => $a['end_date'] ?? null,
+            ]);
+        }
+
+        $project->load(['picAssignments' => fn ($q) => $q->orderBy('start_date')->orderBy('id')]);
+    }
+
+    private function enrichAndCompute(array $data): array
+    {
+        $partnerName = null;
+        if (! empty($data['partner_id'])) {
+            $partner = Partner::query()->find($data['partner_id']);
+            $partnerName = $partner?->name;
+        }
+
+        $picName = null;
+        $picEmail = null;
+
+        $preferredPicUserId = $data['pic_user_id'] ?? null;
+        if (! $preferredPicUserId && ! empty($data['pic_assignments']) && is_array($data['pic_assignments'])) {
+            $first = collect($data['pic_assignments'])->first();
+            $preferredPicUserId = is_array($first) ? ($first['pic_user_id'] ?? null) : null;
+        }
+
+        if (! empty($preferredPicUserId)) {
+            $user = User::query()->find($preferredPicUserId);
+            $picName = $user?->name;
+            $picEmail = $user?->email;
+        }
+
+        $start = ! empty($data['start_date']) ? Carbon::parse($data['start_date']) : null;
+        $end = ! empty($data['end_date']) ? Carbon::parse($data['end_date']) : null;
+
+        $totalDays = null;
+        if ($start && $end) {
+            $diff = $start->diffInDays($end, false);
+            $totalDays = $diff >= 0 ? $diff + 1 : null;
+        }
+
+        $handoverDays = null;
+        if ($end && ! empty($data['handover_official_report'])) {
+            $handover = Carbon::parse($data['handover_official_report']);
+            $handoverDays = $end->diffInDays($handover, false);
+        }
+
+        $validationDays = null;
+        if ($end && ! empty($data['validation_date'])) {
+            $validation = Carbon::parse($data['validation_date']);
+            $validationDays = $end->diffInDays($validation, false);
+        }
+
+        $percentage = null;
+        if (isset($data['point_ach'], $data['point_req']) && $data['point_ach'] !== null && $data['point_req'] !== null && (int) $data['point_req'] > 0) {
+            $percentage = round(((float) $data['point_ach'] / (float) $data['point_req']) * 100, 2);
+        }
+
+        return [
+            ...$data,
+            'partner_name' => $partnerName,
+            'pic_name' => $picName,
+            'pic_email' => $picEmail,
+            'total_days' => $totalDays,
+            'handover_days' => $handoverDays,
+            'validation_days' => $validationDays,
+            'percentage_of_point' => $percentage,
+        ];
+    }
+}

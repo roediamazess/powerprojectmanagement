@@ -24,8 +24,13 @@ class User extends Authenticatable
         'tenant_id',
         'is_internal',
         'name',
+        'full_name',
         'email',
         'password',
+        'start_work',
+        'birthday',
+        'tier',
+        'status',
     ];
 
     /**
@@ -49,6 +54,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'is_internal' => 'boolean',
             'password' => 'hashed',
+            'start_work' => 'date',
+            'birthday' => 'date',
         ];
     }
 

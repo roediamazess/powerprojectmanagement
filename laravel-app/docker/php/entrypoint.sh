@@ -16,6 +16,15 @@ fi
 
 php artisan config:clear >/dev/null 2>&1 || true
 
+if [ -d "public/build_image" ]; then
+  rm -rf public/build/* >/dev/null 2>&1 || true
+  mkdir -p public/build
+  set +e
+  cp -R public/build_image/* public/build/
+  set -e
+fi
+
+
 php artisan config:cache
 php artisan route:cache || true
 php artisan view:cache || true

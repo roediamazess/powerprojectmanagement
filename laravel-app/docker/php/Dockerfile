@@ -22,7 +22,7 @@ RUN apk add --no-cache icu-libs libzip postgresql-libs unzip \
 COPY . .
 RUN rm -f bootstrap/cache/*.php || true
 COPY --from=composer_deps /app/vendor ./vendor
-COPY --from=node_build /app/public/build ./public/build
+COPY --from=node_build /app/public/build ./public/build_image
 RUN php artisan package:discover --ansi \
   && mkdir -p storage bootstrap/cache \
   && chown -R www-data:www-data storage bootstrap/cache

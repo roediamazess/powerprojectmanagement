@@ -1,15 +1,359 @@
 import { Link, usePage } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
+import { formatDateDdMmmYy } from '@/utils/date';
 
 export default function AuthenticatedLayout({ header, children }) {
     const page = usePage();
     const user = page.props.auth.user;
     const url = page.url;
 
+    const [showVersionHistory, setShowVersionHistory] = useState(false);
+
+    const [showSidebarSettings, setShowSidebarSettings] = useState(false);
+
+    const [pageSearchQuery, setPageSearchQuery] = useState('');
+
+    const getCookieSafe = (name) => {
+        if (typeof window !== 'undefined' && typeof window.getCookie === 'function') return window.getCookie(name);
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : '';
+    };
+
+    const setCookieSafe = (name, value) => {
+        if (typeof window !== 'undefined' && typeof window.setCookie === 'function') {
+            window.setCookie(name, value);
+            return;
+        }
+        const d = new Date();
+        d.setTime(d.getTime() + 30 * 60 * 1000);
+        document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/';
+    };
+
+    const deleteCookieSafe = (name) => {
+        if (typeof window !== 'undefined' && typeof window.deleteCookie === 'function') {
+            window.deleteCookie(name);
+            return;
+        }
+        document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+    };
+
+    const optionKeys = [
+        'typography',
+        'version',
+        'layout',
+        'primary',
+        'headerBg',
+        'navheaderBg',
+        'sidebarBg',
+        'sidebarStyle',
+        'sidebarPosition',
+        'headerPosition',
+        'containerLayout',
+    ];
+
+    const getInitialOptions = () => {
+        const base = (typeof window !== 'undefined' && window.dlabSettingsOptions) ? { ...window.dlabSettingsOptions } : {};
+        const next = { ...base };
+        for (const k of optionKeys) {
+            const v = getCookieSafe(k);
+            if (v) next[k] = v;
+        }
+        return {
+            typography: next.typography || 'poppins',
+            version: next.version || 'light',
+            layout: next.layout || 'vertical',
+            primary: next.primary || 'color_1',
+            headerBg: next.headerBg || 'color_1',
+            navheaderBg: next.navheaderBg || 'color_1',
+            sidebarBg: next.sidebarBg || 'color_1',
+            sidebarStyle: next.sidebarStyle || 'full',
+            sidebarPosition: next.sidebarPosition || 'fixed',
+            headerPosition: next.headerPosition || 'fixed',
+            containerLayout: next.containerLayout || 'full',
+        };
+    };
+
+    const [settingsOptions, setSettingsOptions] = useState(getInitialOptions);
+
+    const applySettingsOptions = (next) => {
+        if (typeof window === 'undefined') return;
+        if (typeof window.dlabSettings !== 'function') return;
+        if (!window.dlabSettingsOptions) window.dlabSettingsOptions = {};
+
+        window.dlabSettingsOptions = { ...window.dlabSettingsOptions, ...next };
+        for (const k of optionKeys) {
+            if (k in next) setCookieSafe(k, window.dlabSettingsOptions[k]);
+        }
+
+        try {
+            new window.dlabSettings(window.dlabSettingsOptions);
+        } catch (_e) {
+        }
+
+        setSettingsOptions((prev) => ({ ...prev, ...next }));
+    };
+
+    useEffect(() => {
+        applySettingsOptions(getInitialOptions());
+    }, []);
+
+    useEffect(() => {
+        if (!showSidebarSettings) return;
+        const onKeyDown = (e) => {
+            if (e.key === 'Escape') setShowSidebarSettings(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showSidebarSettings]);
+
+    const deleteAllThemeCookies = () => {
+        if (typeof window !== 'undefined' && typeof window.deleteAllCookie === 'function') {
+            window.deleteAllCookie(true);
+            return;
+        }
+        for (const k of optionKeys) deleteCookieSafe(k);
+        window.location.reload();
+    };
+
+
+    const appVersion = 'v1.2603.2';
+
+    const renderInlineCode = (value) => {
+        const text = String(value ?? '');
+        const parts = text.split('`');
+        if (parts.length === 1) return text;
+        return parts.map((part, idx) => (idx % 2 === 1 ? <code key={idx}>{part}</code> : <span key={idx}>{part}</span>));
+    };
+
+    const versionHistory = [
+        {
+            version: 'v1.2603.2',
+            date: '2026-03-19',
+            sections: [
+                {
+                    title: 'Auth & Navigation',
+                    items: [
+                        'Fix post-login halaman blank pada flow Inertia (redirect/login).',
+                        'Tambah fallback hard redirect setelah login sukses agar tidak perlu reload manual.',
+                    ],
+                    references: [
+                        'Backend login: `app/Http/Controllers/Auth/AuthenticatedSessionController.php`',
+                        'Frontend login: `resources/js/Pages/Auth/Login.jsx`',
+                    ],
+                },
+                {
+                    title: 'User Management (Tables)',
+                    items: [
+                        'Tambah menu sidebar: `Tables > User Management`.',
+                        'Buat halaman list user (langsung tampil) + modal `New/Edit`.',
+                        'CRUD user: create & update via form modal (password optional saat edit).',
+                        'Tampilkan kolom: ID, Name, Full Name, Email, Start Work, Birthday, Tier, Status, Role.',
+                    ],
+                    references: [
+                        'Routes: `routes/web.php`',
+                        'Controller: `app/Http/Controllers/Tables/UserManagementController.php`',
+                        'UI Page: `resources/js/Pages/Tables/UserManagement/Index.jsx`',
+                        'Sidebar: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                    ],
+                },
+                {
+                    title: 'Schema & Data',
+                    items: [
+                        'Extend tabel `users`: `full_name`, `start_work`, `birthday`, `tier`, `status`.',
+                        'Default status: `Active`.',
+                        'Import data user PowerPro ke PostgreSQL (idempotent, match by email).',
+                        'Set password awal semua user import: `pps88` (hashed), user bisa ganti sendiri.',
+                    ],
+                    references: [
+                        'Migrations: `database/migrations/2026_03_19_000000_add_user_management_fields_to_users_table.php`',
+                        'Migrations: `database/migrations/2026_03_19_000001_add_tier_status_to_users_table.php`',
+                        'Seeder import: `database/seeders/PowerProUserImportSeeder.php`',
+                        'Model: `app/Models/User.php`',
+                    ],
+                },
+                {
+                    title: 'Roles & Access',
+                    items: [
+                        'Role options: `Administrator`, `Management`, `Admin Officer`, `User`, `Partner`.',
+                        'Assign role ke user via Spatie Permission (syncRoles).',
+                        'Seed roles default untuk memastikan opsi selalu tersedia.',
+                    ],
+                    references: [
+                        'Seeder roles: `database/seeders/DatabaseSeeder.php`',
+                        'Spatie config: `config/permission.php`',
+                    ],
+                },
+                {
+                    title: 'UI/UX Consistency',
+                    items: [
+                        'Form create/edit dipindah ke modal agar list lebih clean.',
+                        'Standarisasi urutan tombol modal: action (Create/Update/Delete) di kiri, Cancel di kanan.',
+                        'Tambah Version History modal: versi di footer bisa diklik.',
+                        'Tampilan Version History mengikuti theme (primary/body/card) dari settings gear.',
+                    ],
+                    references: [
+                        'User modal: `resources/js/Pages/Tables/UserManagement/Index.jsx`',
+                        'Profile delete modal: `resources/js/Pages/Profile/Partials/DeleteUserForm.jsx`',
+                        'Project rules: `.trae/rules/project_rules.md`',
+                        'Layout: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                        'Theme settings: `public/js/settings.js`',
+                        'Theme UI: `public/css/style.css`',
+                    ],
+                },
+
+                {
+                    title: 'Deployment & Assets',
+                    items: [
+                        'Fix blank page saat reload `/dashboard` karena `public/build` tidak sinkron antara container app dan web.',
+                        'Gunakan shared volume `public/build` agar manifest + assets selalu match.',
+                    ],
+                    references: [
+                        'Compose: `docker-compose.prod.yml`',
+                        'PHP image: `docker/php/Dockerfile`',
+                        'Nginx image: `docker/nginx/Dockerfile`',
+                        'Entrypoint sync: `docker/php/entrypoint.sh`',
+                    ],
+                },
+                {
+                    title: 'Access Control (UI)',
+                    items: [
+                        'Pindahkan pengaturan permission role dari bawah halaman menjadi tombol `User Rights` (popup) di User Management.',
+                    ],
+                    references: [
+                        'UI: `resources/js/Pages/Tables/UserManagement/Index.jsx`',
+                    ],
+                },
+                {
+                    title: 'Smart Search',
+                    items: [
+                        'Search bar header sekarang memfilter data pada halaman aktif (bukan global), dan reset otomatis saat pindah page.',
+                        'Implement filtering di User Management, Partners, dan Partner Setup.',
+                    ],
+                    references: [
+                        'Layout: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                        'User Mgmt: `resources/js/Pages/Tables/UserManagement/Index.jsx`',
+                        'Partners: `resources/js/Pages/Tables/Partners/Index.jsx`',
+                        'Partner Setup: `resources/js/Pages/Tables/PartnerSetup/Index.jsx`',
+                    ],
+                },
+                {
+                    title: 'Partner Setup Rules',
+                    items: [
+                        'Tambah status `Active/Inactive` pada Partner Setup options (default: Active).',
+                        'Dropdown setup di form Partners hanya menampilkan option `Active` (inactive tetap terlihat jika sudah terpilih, tapi disabled).',
+                        'Cegah delete (dan ganti nama/category) option yang sudah dipakai data Partners; arahkan untuk set `Inactive` saja.',
+                        'Fix error 500 Partner Setup: define `$usedValues` saat render list.',
+                    ],
+                    references: [
+                        'Migration: `database/migrations/2026_03_19_000005_add_status_to_partner_setup_options_table.php`',
+                        'Controller: `app/Http/Controllers/Tables/PartnerSetupController.php`',
+                        'Controller: `app/Http/Controllers/Tables/PartnersController.php`',
+                        'UI: `resources/js/Pages/Tables/PartnerSetup/Index.jsx`',
+                        'UI: `resources/js/Pages/Tables/Partners/Index.jsx`',
+                    ],
+                },
+            ],
+        },
+        {
+            version: 'v1.2603.1',
+            date: '2026-03-18',
+            sections: [
+                {
+                    title: 'Branding & UI',
+                    items: [
+                        'Logo brand (ikon) diganti ke logo baru (4 lingkaran warna).',
+                        'Brand title diganti menjadi teks:',
+                        'Normal: `Power Project Management`',
+                        'Mode sidebar collapse: `PPM`',
+                        'Tombol settings (cog) di sidebar kanan dirapikan agar ikon rata tengah.',
+                    ],
+                    references: [
+                        'Next (legacy): `app/page.tsx`',
+                        'Laravel/Inertia: `laravel-app/resources/js/Layouts/AuthenticatedLayout.jsx`',
+                        'CSS template: `public/css/style.css`, `laravel-app/public/css/style.css`',
+                    ],
+                },
+                {
+                    title: 'Footer',
+                    items: [
+                        'Footer diseragamkan dan dibuat rata tengah (2 baris):',
+                        '`© 2026 — Where Insights Drive Action`',
+                        '`v1.2603.1`',
+                    ],
+                    references: [
+                        'Template static HTML: `public/*.html`',
+                        'Template untuk Laravel route `/template/...`: `laravel-app/resources/template-pages/*.html`',
+                        'Next (legacy): `app/page.tsx`',
+                        'Laravel/Inertia: `laravel-app/resources/js/Layouts/AuthenticatedLayout.jsx`',
+                    ],
+                },
+                {
+                    title: 'Stabilitas & Fix',
+                    items: [
+                        'Menghapus “hack replace footer” yang sebelumnya menyuntik teks via JS/CSS.',
+                        '`public/js/dlabnav-init.js`',
+                        '`public/css/style.css`',
+                        '`laravel-app/public/js/dlabnav-init.js`',
+                        '`laravel-app/public/css/style.css`',
+                        'Memperbaiki error Next dev (port 3000) yang menyebabkan halaman “muter-muter” (compile error `app/page.tsx`).',
+                        'Menstabilkan Next dev container di Windows dengan menambahkan volume `.next` (menghindari error lockfile).',
+                        '`docker-compose.yml`',
+                    ],
+                },
+                {
+                    title: 'Backup & Restore',
+                    items: [
+                        'Menambahkan mekanisme backup tanpa menimpa backup lama (timestamped archive) + verifikasi restore.',
+                        'Menambahkan log backup SHA256.',
+                        'Menambahkan script:',
+                        '`backup.ps1`',
+                        '`restore.ps1`',
+                        'Menambahkan dokumentasi:',
+                        '`.backups/README.md`',
+                        '`.backups/backup-log.csv`',
+                    ],
+                },
+                {
+                    title: 'Bbaseline awal',
+                    items: [
+                        'Blueprint proyek berasal dari OpenClaw',
+                        'Struktur aplikasi rekomendasi:',
+                        'Next.js (legacy UI/template) di root repo.',
+                        'Laravel + Inertia (React) di folder `laravel-app/`.',
+                    ],
+                },
+            ],
+        },
+    ];
+
     const headerText = useMemo(() => {
         if (typeof header === 'string') return header;
         return null;
     }, [header]);
+
+    useEffect(() => {
+        setPageSearchQuery('');
+    }, [url]);
+
+    useEffect(() => {
+        if (typeof document === 'undefined') return;
+        const tokens = String(pageSearchQuery ?? '')
+            .toLowerCase()
+            .trim()
+            .split(/\s+/)
+            .map((t) => t.trim())
+            .filter(Boolean);
+
+        const tables = document.querySelectorAll('.content-body table');
+        tables.forEach((table) => {
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach((row) => {
+                const rowText = String(row.textContent ?? '').toLowerCase();
+                const match = tokens.length === 0 ? true : tokens.every((t) => rowText.includes(t));
+                row.style.display = match ? '' : 'none';
+            });
+        });
+    }, [pageSearchQuery, url]);
 
     useEffect(() => {
         const initFillow = () => {
@@ -145,7 +489,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <ul className="navbar-nav header-right">
                                     <li className="nav-item d-flex align-items-center">
                                         <div className="input-group search-area">
-                                            <input type="text" className="form-control" placeholder="Search here..." />
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Search here..."
+                                                data-page-search="current-page"
+                                                value={pageSearchQuery}
+                                                onChange={(e) => setPageSearchQuery(e.target.value)}
+                                            />
                                             <span className="input-group-text">
                                                 <a href="javascript:void(0)">
                                                     <i className="flaticon-381-search-2" />
@@ -155,7 +506,15 @@ export default function AuthenticatedLayout({ header, children }) {
                                     </li>
 
                                     <li className="nav-item dropdown notification_dropdown">
-                                        <a className="nav-link bell dz-theme-mode" href="javascript:void(0)">
+                                        <a
+                                            className="nav-link bell dz-theme-mode"
+                                            href="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                const next = settingsOptions.version === 'dark' ? 'light' : 'dark';
+                                                applySettingsOptions({ version: next });
+                                            }}
+                                        >
                                             <i id="icon-light" className="fas fa-sun" />
                                             <i id="icon-dark" className="fas fa-moon" />
                                         </a>
@@ -474,12 +833,29 @@ export default function AuthenticatedLayout({ header, children }) {
                             <li>
                                 <a className="has-arrow" href="#" aria-expanded="false">
                                     <i className="fas fa-table" />
-                                    <span className="nav-text">Table</span>
+                                    <span className="nav-text">Tables</span>
                                 </a>
                                 <ul aria-expanded="false">
+                                    
+                                    <li><Link href={route('tables.user-management.index')}>User Management</Link></li>
+                                    <li><Link href={route('tables.partner-setup.index', { category: 'implementation_type' })}>Partner Setup</Link></li>
+                                    <li><Link href={route('tables.project-setup.index', { category: 'type' })}>Project Setup</Link></li>
+
                                     <li><Link href={route('template.show', { page: 'table-bootstrap-basic' })}>Bootstrap</Link></li>
                                     <li><Link href={route('template.show', { page: 'table-datatable-basic' })}>Datatable</Link></li>
                                 </ul>
+                            </li>
+                            <li>
+                                <Link href={route('tables.partners.index')} aria-expanded="false">
+                                    <i className="fas fa-handshake" />
+                                    <span className="nav-text">Partners</span>
+                                </Link>
+                            </li>
+                            <li>
+                                <Link href={route('tables.projects.index')} aria-expanded="false">
+                                    <i className="fas fa-clipboard-list" />
+                                    <span className="nav-text">Projects</span>
+                                </Link>
                             </li>
                             <li>
                                 <a className="has-arrow" href="#" aria-expanded="false">
@@ -535,46 +911,383 @@ export default function AuthenticatedLayout({ header, children }) {
 
                         <div className="copyright text-center">
                             <p className="mb-0">© 2026 — Where Insights Drive Action</p>
-                            <p className="mb-0">v1.2603.1</p>
+                            <button type="button" className="btn btn-link p-0 mb-0 text-muted" onClick={() => setShowVersionHistory(true)}>{appVersion}</button>
                         </div>
                     </div>
                 </div>
 
                 <div className="content-body default-height">
                     <div className="container-fluid">
-                        {children}
+                        {isValidElement(children) ? cloneElement(children, { pageSearchQuery }) : children}
                     </div>
                 </div>
 
                 <div className="footer">
                     <div className="copyright text-center">
                         <p className="mb-0">© 2026 — Where Insights Drive Action</p>
-                        <p className="mb-0">v1.2603.1</p>
+                        <button type="button" className="btn btn-link p-0 mb-0 text-muted" onClick={() => setShowVersionHistory(true)}>{appVersion}</button>
                     </div>
                 </div>
-
-                <div className="sidebar-right style-1">
-                    <div className="bg-overlay" />
-                    <a className="sidebar-right-trigger" href="#">
+                <div className={`sidebar-right style-1${showSidebarSettings ? ' show' : ''}`}>
+                    <div className="bg-overlay" onClick={() => setShowSidebarSettings(false)} />
+                    <a
+                        className="sidebar-right-trigger"
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setShowSidebarSettings(true);
+                        }}
+                    >
                         <span>
                             <i className="fas fa-cog" />
                         </span>
                     </a>
-                    <a className="sidebar-close-trigger" href="#">
+                    <a
+                        className="sidebar-close-trigger"
+                        href="#"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setShowSidebarSettings(false);
+                        }}
+                    >
                         <i className="las la-times" />
                     </a>
+
                     <div className="sidebar-right-inner">
-                        <h4>Settings</h4>
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                            <h4 className="mb-0">Pick your style</h4>
+                            <button type="button" className="btn btn-primary btn-sm" onClick={deleteAllThemeCookies}>
+                                Delete All Cookie
+                            </button>
+                        </div>
+
+                        <div className="card-tabs">
+                            <ul className="nav nav-tabs" role="tablist">
+                                <li className="nav-item">
+                                    <a className="nav-link active" data-bs-toggle="tab" href="#theme-tab" role="tab">
+                                        Theme
+                                    </a>
+                                </li>
+                                <li className="nav-item">
+                                    <a className="nav-link" data-bs-toggle="tab" href="#header-tab" role="tab">
+                                        Header
+                                    </a>
+                                </li>
+                                <li className="nav-item">
+                                    <a className="nav-link" data-bs-toggle="tab" href="#content-tab" role="tab">
+                                        Content
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
                         <div className="tab-content">
-                            <div className="tab-pane fade active show">
+                            <div className="tab-pane fade active show" id="theme-tab" role="tabpanel">
                                 <div className="admin-settings">
-                                    <p className="mb-0">Gunakan toggle sun/moon untuk Light/Dark.</p>
+                                    <div className="row">
+                                        <div className="col-12">
+                                            <p>Background</p>
+                                            <select
+                                                className="form-select"
+                                                id="theme_version"
+                                                value={settingsOptions.version}
+                                                onChange={(e) => applySettingsOptions({ version: e.target.value })}
+                                            >
+                                                <option value="light">Light</option>
+                                                <option value="dark">Dark</option>
+                                                <option value="transparent">Transparent</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Primary Color</p>
+                                            <div>
+                                                {Array.from({ length: 15 }).map((_, idx) => {
+                                                    const v = `color_${idx + 1}`;
+                                                    const id = `primary_color_${idx + 1}`;
+                                                    return (
+                                                        <span key={id}>
+                                                            <input
+                                                                type="radio"
+                                                                name="primary_color"
+                                                                value={v}
+                                                                id={id}
+                                                                checked={settingsOptions.primary === v}
+                                                                onChange={(e) => applySettingsOptions({ primary: e.target.value })}
+                                                            />
+                                                            <label htmlFor={id} />
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Navigation Header</p>
+                                            <div>
+                                                {Array.from({ length: 15 }).map((_, idx) => {
+                                                    const v = `color_${idx + 1}`;
+                                                    const id = `nav_header_color_${idx + 1}`;
+                                                    return (
+                                                        <span key={id}>
+                                                            <input
+                                                                type="radio"
+                                                                name="nav_header_color"
+                                                                value={v}
+                                                                id={id}
+                                                                checked={settingsOptions.navheaderBg === v}
+                                                                onChange={(e) => applySettingsOptions({ navheaderBg: e.target.value })}
+                                                            />
+                                                            <label htmlFor={id} />
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Header</p>
+                                            <div>
+                                                {Array.from({ length: 15 }).map((_, idx) => {
+                                                    const v = `color_${idx + 1}`;
+                                                    const id = `header_color_${idx + 1}`;
+                                                    return (
+                                                        <span key={id}>
+                                                            <input
+                                                                type="radio"
+                                                                name="header_color"
+                                                                value={v}
+                                                                id={id}
+                                                                checked={settingsOptions.headerBg === v}
+                                                                onChange={(e) => applySettingsOptions({ headerBg: e.target.value })}
+                                                            />
+                                                            <label htmlFor={id} />
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Sidebar</p>
+                                            <div>
+                                                {Array.from({ length: 15 }).map((_, idx) => {
+                                                    const v = `color_${idx + 1}`;
+                                                    const id = `sidebar_color_${idx + 1}`;
+                                                    return (
+                                                        <span key={id}>
+                                                            <input
+                                                                type="radio"
+                                                                name="sidebar_color"
+                                                                value={v}
+                                                                id={id}
+                                                                checked={settingsOptions.sidebarBg === v}
+                                                                onChange={(e) => applySettingsOptions({ sidebarBg: e.target.value })}
+                                                            />
+                                                            <label htmlFor={id} />
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="tab-pane fade" id="header-tab" role="tabpanel">
+                                <div className="admin-settings">
+                                    <div className="row">
+                                        <div className="col-lg-6">
+                                            <p>Layout</p>
+                                            <select
+                                                className="form-select"
+                                                id="theme_layout"
+                                                value={settingsOptions.layout}
+                                                onChange={(e) => applySettingsOptions({ layout: e.target.value })}
+                                            >
+                                                <option value="vertical">Vertical</option>
+                                                <option value="horizontal">Horizontal</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-lg-6">
+                                            <p>Header position</p>
+                                            <select
+                                                className="form-select"
+                                                id="header_position"
+                                                value={settingsOptions.headerPosition}
+                                                onChange={(e) => applySettingsOptions({ headerPosition: e.target.value })}
+                                            >
+                                                <option value="fixed">Fixed</option>
+                                                <option value="static">Static</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Sidebar</p>
+                                            <select
+                                                className="form-select"
+                                                id="sidebar_style"
+                                                value={settingsOptions.sidebarStyle}
+                                                onChange={(e) => applySettingsOptions({ sidebarStyle: e.target.value })}
+                                            >
+                                                <option value="full">Full</option>
+                                                <option value="mini">Mini</option>
+                                                <option value="compact">Compact</option>
+                                                <option value="modern">Modern</option>
+                                                <option value="icon-hover">Icon Hover</option>
+                                                <option value="overlay">Overlay</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-lg-6 mt-4">
+                                            <p>Sidebar position</p>
+                                            <select
+                                                className="form-select"
+                                                id="sidebar_position"
+                                                value={settingsOptions.sidebarPosition}
+                                                onChange={(e) => applySettingsOptions({ sidebarPosition: e.target.value })}
+                                            >
+                                                <option value="fixed">Fixed</option>
+                                                <option value="static">Static</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="tab-pane fade" id="content-tab" role="tabpanel">
+                                <div className="admin-settings">
+                                    <div className="row">
+                                        <div className="col-lg-6">
+                                            <p>Container</p>
+                                            <select
+                                                className="form-select"
+                                                id="container_layout"
+                                                value={settingsOptions.containerLayout}
+                                                onChange={(e) => applySettingsOptions({ containerLayout: e.target.value })}
+                                            >
+                                                <option value="full">Full</option>
+                                                <option value="boxed">Boxed</option>
+                                                <option value="wide-boxed">Wide Boxed</option>
+                                            </select>
+                                        </div>
+
+                                        <div className="col-lg-6">
+                                            <p>Body Font</p>
+                                            <select
+                                                className="form-select"
+                                                id="theme_typography"
+                                                value={settingsOptions.typography}
+                                                onChange={(e) => applySettingsOptions({ typography: e.target.value })}
+                                            >
+                                                <option value="poppins">Poppins</option>
+                                                <option value="roboto">Roboto</option>
+                                                <option value="opensans">Open Sans</option>
+                                                <option value="helvetica">Helvetica</option>
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div className="note-text">Theme &amp; layout settings</div>
                 </div>
+
+            {showVersionHistory ? (
+                <>
+                    <div className="modal fade show" style={{ display: 'block' }} role="dialog" aria-modal="true">
+                        <div className="modal-dialog modal-dialog-centered modal-lg" role="document">
+                            <div className="modal-content border-0 shadow-lg overflow-hidden">
+                                <div
+                                    className="modal-header text-white"
+                                    style={{
+                                        background:
+                                            'linear-gradient(90deg, var(--primary) 0%, var(--secondary) 55%, var(--primary-light) 100%)',
+                                    }}
+                                >
+                                    <div>
+                                        <h5 className="modal-title mb-0">Version History</h5>
+                                        <small style={{ opacity: 0.9 }}>Format versi: v1.YYMM.patch</small>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="btn-close btn-close-white"
+                                        onClick={() => setShowVersionHistory(false)}
+                                    />
+                                </div>
+
+                                <div className="modal-body" style={{ background: 'var(--body-bg)' }}>
+                                    {(versionHistory ?? []).map((v) => (
+                                        <div key={v.version} className="card border-0 shadow-sm mb-3">
+                                            <div className="card-header d-flex align-items-center justify-content-between" style={{ background: 'var(--card)' }}>
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <span className="badge bg-dark">{v.version}</span>
+                                                    <span className="text-muted">{formatDateDdMmmYy(v.date)}</span>
+                                                </div>
+                                                {v.version === appVersion ? (
+                                                    <span className="badge bg-success">Latest</span>
+                                                ) : (
+                                                    <span className="badge bg-secondary">Archive</span>
+                                                )}
+                                            </div>
+
+                                            <div className="card-body">
+                                                {(v.sections ?? []).map((s) => (
+                                                    <div key={`${v.version}-${s.title}`} className="mb-4">
+                                                        <h6 className="text-primary mb-2">{s.title}</h6>
+
+                                                        <ol className="mb-2" style={{ listStyleType: 'decimal', listStylePosition: 'outside', paddingLeft: '1.25rem' }}>
+                                                            {(s.items ?? []).map((line) => {
+                                                                const isSub =
+                                                                    String(line).startsWith('Normal:') ||
+                                                                    String(line).startsWith('Mode sidebar collapse:');
+                                                                return (
+                                                                    <li
+                                                                        key={`${v.version}-${s.title}-${line}`}
+                                                                        className={isSub ? 'ms-3' : undefined} style={{ display: 'list-item', listStyleType: 'decimal' }}
+                                                                    >
+                                                                        {renderInlineCode(line)}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ol>
+
+                                                        {(s.references ?? []).length ? (
+                                                            <>
+                                                                <div className="text-muted mb-1">Referensi perubahan:</div>
+                                                                <ul className="mb-0">
+                                                                    {(s.references ?? []).map((r) => (
+                                                                        <li key={`${v.version}-${s.title}-${r}`}>{renderInlineCode(r)}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </>
+                                                        ) : null}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="modal-footer" style={{ background: 'var(--card)' }}>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setShowVersionHistory(false)}
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show" onClick={() => setShowVersionHistory(false)} />
+                </>
+            ) : null}
+
             </div>
         </>
     );
