@@ -375,8 +375,27 @@ export default function TimeBoxingIndex({ items, filters, typeOptions, priorityO
         });
     };
 
-    const doDelete = (t) => {
-        if (!window.confirm(`Delete Time Boxing #${t.no}?`)) return;
+    const doDelete = async (t) => {
+        const label = `Time Boxing #${t.no}`;
+
+        if (typeof window !== 'undefined' && window.Swal?.fire) {
+            const result = await window.Swal.fire({
+                title: 'Hapus Time Boxing?',
+                text: label,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+            if (!result.isConfirmed) return;
+        } else {
+            if (!window.confirm(`Delete ${label}?`)) return;
+        }
+
         destroy(route('time-boxing.destroy', { timeBoxing: t.id }, false), {
             preserveScroll: true,
         });

@@ -8,6 +8,8 @@ services:
     depends_on:
       - app
     restart: unless-stopped
+    volumes:
+      - public_build:/var/www/html/public/build
 
   app:
     build:
@@ -32,6 +34,7 @@ services:
       - SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD:-password}
     volumes:
       - storage_data:/var/www/html/storage
+      - public_build:/var/www/html/public/build
     depends_on:
       - db
     restart: unless-stopped
@@ -54,3 +57,4 @@ services:
 volumes:
   pg_data:
   storage_data:
+  public_build:

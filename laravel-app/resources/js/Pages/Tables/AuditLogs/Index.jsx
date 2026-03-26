@@ -668,7 +668,7 @@ function computeDiffRows(before, after) {
                     const pair = byId.get(id);
                     if (pair) {
                         // compare selected fields
-                        const fields = ['pic_user_id', 'pic_name', 'pic_email', 'start_date', 'end_date'];
+                        const fields = ['pic_user_id', 'pic_name', 'pic_email', 'start_date', 'end_date', 'status', 'release_state'];
                         fields.forEach((f) => push(`pic_assignments[id=${id}].${f}`, pair.v?.[f], it?.[f]));
                         seen.add(id);
                     } else {

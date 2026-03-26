@@ -19,7 +19,7 @@ class EnsureCorePermissions
         try {
             app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-            Cache::remember('core_permissions_seeded_v4', now()->addHours(6), function () {
+            Cache::remember('core_permissions_seeded_v5', now()->addHours(6), function () {
                 if (! Schema::hasTable('permissions') || ! Schema::hasTable('roles')) {
                     return true;
                 }

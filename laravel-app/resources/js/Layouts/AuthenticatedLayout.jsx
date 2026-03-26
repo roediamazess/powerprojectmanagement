@@ -119,7 +119,7 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
 
-    const appVersion = 'v1.2603.5';
+    const appVersion = 'v1.2603.6';
     const releaseNotes = page.props.releaseNotes;
 
     const canSeeReleaseReferences = useMemo(() => {
@@ -127,56 +127,139 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [roles]);
 
     const renderInlineCode = (value, options = {}) => {
-        const text = String(value ?? '');
-        const parts = text.split('`');
-        if (parts.length === 1) return text;
+        try {
+            const text = String(value ?? '');
+            const parts = text.split('`');
+            if (parts.length === 1) return text;
 
-        const blurCode = Boolean(options.blurCode);
-        return parts.map((part, idx) =>
-            idx % 2 === 1 ? (
-                <code
-                    key={idx}
-                    style={
-                        blurCode
-                            ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }
-                            : undefined
-                    }
-                >
-                    {part}
-                </code>
-            ) : (
-                <span key={idx}>{part}</span>
-            ),
-        );
+            const blurCode = Boolean(options.blurCode);
+            return parts.map((part, idx) =>
+                idx % 2 === 1 ? (
+                    <code
+                        key={idx}
+                        style={
+                            blurCode
+                                ? { filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }
+                                : undefined
+                        }
+                    >
+                        {part}
+                    </code>
+                ) : (
+                    <span key={idx}>{part}</span>
+                ),
+            );
+        } catch (_e) {
+            return String(value ?? '');
+        }
     };
 
     const renderReference = (value) => {
-        const text = String(value ?? '');
-        if (canSeeReleaseReferences) return renderInlineCode(text);
+        try {
+            const text = String(value ?? '');
+            if (canSeeReleaseReferences) {
+                if (text.includes('`')) return renderInlineCode(text);
 
-        const idx = text.indexOf(':');
-        if (idx === -1) {
+                const idx = text.indexOf(':');
+                if (idx === -1) {
+                    return <code>{text}</code>;
+                }
+
+                const prefix = text.slice(0, idx + 1);
+                const suffix = text.slice(idx + 1);
+                const parts = suffix
+                    .split(',')
+                    .map((p) => p.trim())
+                    .filter(Boolean);
+
+                if (parts.length === 0) return <span>{text}</span>;
+
+                return (
+                    <>
+                        <span>{prefix} </span>
+                        {parts.map((p, i) => (
+                            <span key={`${p}-${i}`}>
+                                <code>{p}</code>
+                                {i < parts.length - 1 ? <span>, </span> : null}
+                            </span>
+                        ))}
+                    </>
+                );
+            }
+
+            const idx = text.indexOf(':');
+            if (idx === -1) {
+                return (
+                    <span style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
+                        {text}
+                    </span>
+                );
+            }
+
+            const prefix = text.slice(0, idx + 1);
+            const suffix = text.slice(idx + 1);
+
             return (
-                <span style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
-                    {text}
-                </span>
+                <>
+                    <span>{prefix}</span>
+                    <span style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
+                        {suffix}
+                    </span>
+                </>
             );
+        } catch (_e) {
+            return String(value ?? '');
         }
-
-        const prefix = text.slice(0, idx + 1);
-        const suffix = text.slice(idx + 1);
-
-        return (
-            <>
-                <span>{prefix}</span>
-                <span style={{ filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
-                    {suffix}
-                </span>
-            </>
-        );
     };
 
     const staticVersionHistory = [
+        {
+            version: 'v1.2603.6',
+            date: '2026-03-26',
+            sections: [
+                {
+                    title: 'Added',
+                    items: [
+                        'Branding: favicon diganti ke logo polos dan konsisten di seluruh halaman.',
+                        'Branding: cache-buster untuk logo (`/images/power-pro-logo-plain.png?v=20260326`) agar update terlihat tanpa konflik cache.',
+                    ],
+                    references: [
+                        'Favicon: `public/favicon.png`',
+                        'Login logo: `resources/js/Layouts/GuestLayout.jsx`',
+                        'Header logo: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                    ],
+                },
+                {
+                    title: 'Fixed',
+                    items: [
+                        'Auth: perbaiki 405 saat logout dengan mengganti route ke POST dan redirect yang benar.',
+                        'Login: perbaiki halaman blank akibat import chunk Vite yang 404 (sinkronisasi build & manifest produksi).',
+                        'Projects: perbaiki validasi assignment PIC yang terlalu ketat (nullable).',
+                        'Bootstrap: bersihkan duplikasi konfigurasi `redirectGuestsTo` pada bootstrap middleware.',
+                    ],
+                    references: [
+                        'Routes logout: `routes/auth.php`',
+                        'Controller logout: `app/Http/Controllers/Auth/AuthenticatedSessionController.php`',
+                        'Build & manifest: `docker-compose.prod.yml`, `docker/php/entrypoint.sh`, `docker/nginx/Dockerfile`',
+                        'Projects controller: `app/Http/Controllers/Tables/ProjectsController.php`',
+                        'Bootstrap: `bootstrap/app.php`',
+                    ],
+                },
+                {
+                    title: 'Changed',
+                    items: [
+                        'Login: hilangkan teks “Sign up” dan heading di bawah logo agar tampilan lebih minimal.',
+                        'Header aplikasi: ganti ikon SVG menjadi logo PNG polos yang sama dengan halaman login.',
+                        'Branding: konsisten memakai “Power Project Management” di seluruh area.',
+                    ],
+                    references: [
+                        'Login layout: `resources/js/Layouts/GuestLayout.jsx`',
+                        'Authenticated layout: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                        'Dashboard copy: `resources/js/Pages/Dashboard.jsx`',
+                    ],
+                },
+            ],
+        },
         {
             version: 'v1.2603.5',
             date: '2026-03-24',
@@ -199,11 +282,11 @@ export default function AuthenticatedLayout({ header, children }) {
                         'Routing pendek aktif untuk /partners, /projects, /time-boxing, /audit-logs (CRUD dan navigasi).',
                     ],
                     references: [
-                        'Projects UI: resources/js/Pages/Tables/Projects/Index.jsx',
-                        'Projects controller: app/Http/Controllers/Tables/ProjectsController.php',
-                        'Audit Logs UI: resources/js/Pages/Tables/AuditLogs/Index.jsx',
-                        'Audit Logs controller: app/Http/Controllers/Tables/AuditLogsController.php',
-                        'Routing: routes/web.php',
+                        'Projects UI: `resources/js/Pages/Tables/Projects/Index.jsx`',
+                        'Projects controller: `app/Http/Controllers/Tables/ProjectsController.php`',
+                        'Audit Logs UI: `resources/js/Pages/Tables/AuditLogs/Index.jsx`',
+                        'Audit Logs controller: `app/Http/Controllers/Tables/AuditLogsController.php`',
+                        'Routing: `routes/web.php`',
                     ],
                 },
                 {
@@ -214,9 +297,9 @@ export default function AuthenticatedLayout({ header, children }) {
                         'Time Boxing (test env): fallback penomoran no untuk non-PostgreSQL.',
                     ],
                     references: [
-                        'Projects UI: resources/js/Pages/Tables/Projects/Index.jsx',
-                        'Ziggy origin: resources/js/app.jsx',
-                        'TimeBoxing controller: app/Http/Controllers/Tables/TimeBoxingsController.php',
+                        'Projects UI: `resources/js/Pages/Tables/Projects/Index.jsx`',
+                        'Ziggy origin: `resources/js/app.jsx`',
+                        'TimeBoxing controller: `app/Http/Controllers/Tables/TimeBoxingsController.php`',
                     ],
                 },
                 {
@@ -227,10 +310,10 @@ export default function AuthenticatedLayout({ header, children }) {
                         'Semua form & redirect CRUD memakai route pendek (/partners, /projects, /time-boxing, /audit-logs).',
                     ],
                     references: [
-                        'Projects UI: resources/js/Pages/Tables/Projects/Index.jsx',
-                        'Audit Logs UI: resources/js/Pages/Tables/AuditLogs/Index.jsx',
-                        'Layouts: resources/js/Layouts/AuthenticatedLayout.jsx',
-                        'Routing: routes/web.php',
+                        'Projects UI: `resources/js/Pages/Tables/Projects/Index.jsx`',
+                        'Audit Logs UI: `resources/js/Pages/Tables/AuditLogs/Index.jsx`',
+                        'Layouts: `resources/js/Layouts/AuthenticatedLayout.jsx`',
+                        'Routing: `routes/web.php`',
                     ],
                 },
             ],
@@ -540,7 +623,15 @@ export default function AuthenticatedLayout({ header, children }) {
         },
     ];
 
-    const versionHistory = (Array.isArray(releaseNotes) && releaseNotes.length ? releaseNotes : staticVersionHistory);
+    const versionHistory = (() => {
+    const src = Array.isArray(releaseNotes) && releaseNotes.length ? releaseNotes : [];
+    const byVer = new Map();
+    for (const v of src) byVer.set(String(v.version), v);
+    for (const v of staticVersionHistory) if (!byVer.has(String(v.version))) byVer.set(String(v.version), v);
+    const arr = Array.from(byVer.values());
+    arr.sort((a,b) => String(b.version).localeCompare(String(a.version)));
+    return arr;
+})();
 
     const headerText = useMemo(() => {
         if (typeof header === 'string') return header;
@@ -601,37 +692,12 @@ export default function AuthenticatedLayout({ header, children }) {
             <div id="main-wrapper">
                 <div className="nav-header">
                     <Link href={route('dashboard')} className="brand-logo">
-                        <svg
+                                                <img
                             className="logo-abbr"
-                            width="55"
-                            height="55"
-                            viewBox="0 0 100 100"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <defs>
-                                <linearGradient id="ppm-blue" x1="20" y1="8" x2="80" y2="60" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stopColor="#0AA0FF" />
-                                    <stop offset="1" stopColor="#5EE7FF" />
-                                </linearGradient>
-                                <linearGradient id="ppm-pink" x1="8" y1="30" x2="60" y2="80" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stopColor="#FF2D8F" />
-                                    <stop offset="1" stopColor="#FF77C8" />
-                                </linearGradient>
-                                <linearGradient id="ppm-green" x1="40" y1="30" x2="92" y2="78" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stopColor="#7EEA3B" />
-                                    <stop offset="1" stopColor="#B5FF75" />
-                                </linearGradient>
-                                <linearGradient id="ppm-yellow" x1="22" y1="45" x2="78" y2="96" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stopColor="#FFB300" />
-                                    <stop offset="1" stopColor="#FFE066" />
-                                </linearGradient>
-                            </defs>
-                            <circle cx="50" cy="28" r="28" fill="url(#ppm-blue)" fillOpacity="0.92" />
-                            <circle cx="28" cy="50" r="28" fill="url(#ppm-pink)" fillOpacity="0.92" />
-                            <circle cx="72" cy="50" r="28" fill="url(#ppm-green)" fillOpacity="0.92" />
-                            <circle cx="50" cy="72" r="28" fill="url(#ppm-yellow)" fillOpacity="0.92" />
-                        </svg>
+                            src="/images/power-pro-logo-plain.png?v=20260326"
+                            alt="Power Pro Logo"
+                            style={{ width: "40px", height: "40px" }}
+                        />
                         <div className="brand-title">
                             <span className="brand-title-full">Power Project Management</span>
                             <span className="brand-title-short">PPM</span>
@@ -1145,10 +1211,6 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
-                        <div className="copyright text-center">
-                            <p className="mb-0">© 2026 — Where Insights Drive Action</p>
-                            <button type="button" className="btn btn-link p-0 mb-0 text-muted" onClick={() => setShowVersionHistory(true)}>{appVersion}</button>
-                        </div>
                     </div>
                 </div>
 

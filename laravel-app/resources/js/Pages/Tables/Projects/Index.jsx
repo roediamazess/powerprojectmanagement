@@ -13,7 +13,7 @@ const displayDateValue = (v) => {
     return out === '-' ? '' : out;
 };
 
-export default function ProjectsIndex({ projects, filters, partners, users, setupOptions, assignmentOptions, projectInformationOptions, picAssignmentOptions, pageSearchQuery }) {
+export default function ProjectsIndex({ projects, filters, partners, users, setupOptions, assignmentOptions, projectInformationOptions, picAssignmentOptions, pageSearchQuery, canReopenPicPeriod }) {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
 
@@ -249,16 +249,15 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
 
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
         cnc_id: '',
-        pic_assignments: [{ pic_user_id: '', start_date: '', end_date: '' }],
+        pic_assignments: [],
         partner_id: '',
         project_name: '',
         assignment: '',
         project_information: projectInformationOptions?.[1] ?? 'Submission',
-        pic_assignment: picAssignmentOptions?.[1] ?? 'Request',
         type: '',
         start_date: '',
         end_date: '',
-        status: '',
+        status: 'Scheduled',
         handover_official_report: '',
         kpi2_pic: '',
         check_official_report: '',
@@ -336,19 +335,26 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
     };
 
     const addPicRow = () => {
-        setData('pic_assignments', [...(data.pic_assignments ?? []), { pic_user_id: '', start_date: '', end_date: '' }]);
+        setData('pic_assignments', [...(data.pic_assignments ?? []), { pic_user_id: '', start_date: '', end_date: '', assignment: 'Assignment', status: 'Scheduled', release_state: 'Open' }]);
     };
 
     const updatePicRow = (index, key, value) => {
+        const row = (data.pic_assignments ?? [])[index] ?? null;
+        const raw = String(row?.release_state ?? 'Open').trim().toLowerCase();
+        const isApproved = raw === 'approved' || raw === 'released';
+        if (isApproved && (key === 'pic_user_id' || key === 'start_date' || key === 'end_date' || key === 'assignment')) return;
         const next = [...(data.pic_assignments ?? [])];
         next[index] = { ...next[index], [key]: value };
         setData('pic_assignments', next);
     };
 
     const removePicRow = (index) => {
+        const row = (data.pic_assignments ?? [])[index] ?? null;
+        const raw = String(row?.release_state ?? 'Open').trim().toLowerCase();
+        if (raw === 'approved' || raw === 'released') return;
         const next = [...(data.pic_assignments ?? [])];
         next.splice(index, 1);
-        setData('pic_assignments', next.length ? next : [{ pic_user_id: '', start_date: '', end_date: '' }]);
+        setData('pic_assignments', next);
     };
 
     const selectedPartner = useMemo(() => {
@@ -437,12 +443,16 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
     }, [data.pic_assignments, picLookupQuery, picPickerRowIndex, users]);
 
     const openPicPicker = (rowIndex) => {
+        const row = (data.pic_assignments ?? [])[rowIndex] ?? null;
+        if ((row?.release_state ?? 'Open') === 'Approved') return;
         setPicLookupQuery('');
         setPicPickerRowIndex(rowIndex);
         setShowPicPicker(true);
     };
 
     const selectPicUserId = (id) => {
+        const row = typeof picPickerRowIndex === 'number' ? (data.pic_assignments ?? [])[picPickerRowIndex] : null;
+        if ((row?.release_state ?? 'Open') === 'Approved') return;
         if (typeof picPickerRowIndex !== 'number') return;
         updatePicRow(picPickerRowIndex, 'pic_user_id', id ? String(id) : '');
         setShowPicPicker(false);
@@ -483,12 +493,11 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
         setPicPickerRowIndex(null);
         setData({
             cnc_id: '',
-            pic_assignments: [{ pic_user_id: '', start_date: '', end_date: '' }],
+        pic_assignments: [],
             partner_id: '',
             project_name: '',
             assignment: '',
             project_information: projectInformationOptions?.[1] ?? 'Submission',
-            pic_assignment: picAssignmentOptions?.[1] ?? 'Request',
             type: 'Maintenance',
             start_date: '',
             end_date: '',
@@ -524,16 +533,38 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
         setPicPickerRowIndex(null);
         setData({
             cnc_id: p.cnc_id ?? '',
-            pic_assignments: (p.pic_assignments && p.pic_assignments.length ? p.pic_assignments.map((r) => ({ pic_user_id: r.pic_user_id ?? '', start_date: r.start_date ? displayDateValue(r.start_date) : '', end_date: r.end_date ? displayDateValue(r.end_date) : '' })) : (p.pic_user_id ? [{ pic_user_id: p.pic_user_id, start_date: p.start_date ? displayDateValue(p.start_date) : '', end_date: p.end_date ? displayDateValue(p.end_date) : '' }] : [{ pic_user_id: '', start_date: '', end_date: '' }])),
+            pic_assignments: (p.pic_assignments && p.pic_assignments.length
+                ? p.pic_assignments
+                      .filter((r) => Boolean(r?.pic_user_id) || Boolean(r?.start_date) || Boolean(r?.end_date))
+                      .map((r) => ({
+                          id: r.id ?? null,
+                          pic_user_id: r.pic_user_id ?? '',
+                          start_date: r.start_date ? displayDateValue(r.start_date) : '',
+                          end_date: r.end_date ? displayDateValue(r.end_date) : '',
+                          assignment: r.assignment ?? 'Assignment',
+                          status: r.status ?? 'Scheduled',
+                          release_state: r.release_state === 'Released' ? 'Approved' : (r.release_state ?? 'Open'),
+                      }))
+                : (p.pic_user_id
+                    ? [{
+                        id: null,
+                        pic_user_id: p.pic_user_id,
+                        start_date: p.start_date ? displayDateValue(p.start_date) : '',
+                        end_date: p.end_date ? displayDateValue(p.end_date) : '',
+                        assignment: 'Assignment',
+                        status: 'Scheduled',
+                        release_state: 'Open',
+                    }]
+                    : [])),
             partner_id: p.partner_id ?? '',
             project_name: p.project_name ?? '',
             assignment: p.assignment ?? '',
             project_information: p.project_information ?? (projectInformationOptions?.[1] ?? 'Submission'),
-            pic_assignment: p.pic_assignment ?? (picAssignmentOptions?.[1] ?? 'Request'),
+            
             type: p.type ?? '',
             start_date: p.start_date ? displayDateValue(p.start_date) : '',
             end_date: p.end_date ? displayDateValue(p.end_date) : '',
-            status: p.status ?? '',
+            status: p.status ?? 'Scheduled',
             handover_official_report: p.handover_official_report ? displayDateValue(p.handover_official_report) : '',
             kpi2_pic: p.kpi2_pic ?? '',
             check_official_report: p.check_official_report ? displayDateValue(p.check_official_report) : '',
@@ -549,8 +580,8 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
             s1_estimation_date: p.s1_estimation_date ? displayDateValue(p.s1_estimation_date) : '',
             s1_over_days: p.s1_over_days ?? '',
             s1_count_emails_sent: p.s1_count_emails_sent ?? '',
-            s2_email_sent: p.s2_email_sent ?? '',
-            s3_email_sent: p.s3_email_sent ?? '',
+            s2_email_sent: p.s2_email_sent ? displayDateValue(p.s2_email_sent) : '',
+            s3_email_sent: p.s3_email_sent ? displayDateValue(p.s3_email_sent) : '',
         });
         setShowModal(true);
     };
@@ -571,11 +602,17 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
 
         const payload = {
             ...data,
-            pic_assignments: (data.pic_assignments ?? []).map((r) => ({
-                pic_user_id: r.pic_user_id === '' ? null : Number(r.pic_user_id),
-                start_date: (parseDateDdMmmYyToIso(r.start_date) || null),
-                end_date: (parseDateDdMmmYyToIso(r.end_date) || null),
-            })),
+            pic_assignments: (data.pic_assignments ?? [])
+                .filter((r) => Boolean(r?.pic_user_id) || Boolean(r?.start_date) || Boolean(r?.end_date))
+                .map((r) => ({
+                    id: r.id ?? null,
+                    pic_user_id: r.pic_user_id === '' ? null : Number(r.pic_user_id),
+                    start_date: (parseDateDdMmmYyToIso(r.start_date) || null),
+                    end_date: (parseDateDdMmmYyToIso(r.end_date) || null),
+                    assignment: r.assignment === '' ? null : r.assignment,
+                    status: r.status === '' ? null : r.status,
+                    release_state: r.release_state === 'Approved' ? 'Approved' : 'Open',
+                })),
             partner_id: data.partner_id === '' ? null : Number(data.partner_id),
             point_ach: data.point_ach === '' ? null : Number(data.point_ach),
             point_req: data.point_req === '' ? null : Number(data.point_req),
@@ -589,6 +626,8 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
             validation_date: parseDateDdMmmYyToIso(data.validation_date) || null,
             activity_sent: parseDateDdMmmYyToIso(data.activity_sent) || null,
             s1_estimation_date: parseDateDdMmmYyToIso(data.s1_estimation_date) || null,
+            s2_email_sent: parseDateDdMmmYyToIso(data.s2_email_sent) || null,
+            s3_email_sent: parseDateDdMmmYyToIso(data.s3_email_sent) || null,
 
         };
 
@@ -608,8 +647,27 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
         });
     };
 
-    const doDelete = (p) => {
-        if (!window.confirm(`Delete project: ${p.project_name || p.id}?`)) return;
+    const doDelete = async (p) => {
+        const label = p.project_name || p.id;
+
+        if (typeof window !== 'undefined' && window.Swal?.fire) {
+            const result = await window.Swal.fire({
+                title: 'Hapus project?',
+                text: `Project: ${label}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+            if (!result.isConfirmed) return;
+        } else {
+            if (!window.confirm(`Delete project: ${label}?`)) return;
+        }
+
         destroy(route('projects.destroy', { project: p.id }, false), {
             preserveScroll: true,
         });
@@ -1022,117 +1080,70 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                 <form onSubmit={submit}>
                                     <div className="modal-body">
                                         <div className="row">
-                                            <div className="col-lg-3 mb-3">
+                                            <div className="col-lg-6 mb-3">
+                                                <label className="text-black font-w600 form-label">Partner</label>
+                                                <input
+                                                    className={`form-control ${errors.partner_id ? 'is-invalid' : ''}`}
+                                                    placeholder="Search partner (Active only)..."
+                                                    value={partnerDisplayValue}
+                                                    readOnly
+                                                    onClick={openPartnerPicker}
+                                                />
+                                                {errors.partner_id ? <div className="invalid-feedback">{errors.partner_id}</div> : null}
+                                                <div className="d-flex justify-content-between align-items-center form-text">
+                                                    <span>{selectedPartner ? `Partner Name: ${selectedPartner.name}` : ''}</span>
+                                                    <button type="button" className="btn btn-link p-0" onClick={() => selectPartnerId('')} disabled={!data.partner_id}>
+                                                        Clear
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="col-lg-3 offset-lg-3 mb-3">
                                                 <label className="text-black font-w600 form-label">CNC ID</label>
                                                 <input className={`form-control ${errors.cnc_id ? 'is-invalid' : ''}`} value={data.cnc_id} onChange={(e) => setData('cnc_id', e.target.value)} />
                                                 {errors.cnc_id ? <div className="invalid-feedback">{errors.cnc_id}</div> : null}
                                             </div>
 
-                                            <div className="col-lg-4 mb-3">
-                                                <label className="text-black font-w600 form-label">Partner</label>
-                                                <div className="input-group">
-                                                    <input
-                                                        className={`form-control ${errors.partner_id ? 'is-invalid' : ''}`}
-                                                        placeholder="Search partner (Active only)..."
-                                                        value={partnerDisplayValue}
-                                                        readOnly
-                                                        onClick={openPartnerPicker}
-                                                    />
-                                                    <button type="button" className="btn btn-outline-secondary" onClick={() => selectPartnerId('')} disabled={!data.partner_id}>
-                                                        Clear
-                                                    </button>
-                                                </div>
-                                                {errors.partner_id ? <div className="invalid-feedback">{errors.partner_id}</div> : null}
-                                                {selectedPartner ? <div className="form-text">Partner Name: {selectedPartner.name}</div> : null}
-                                            </div>
-                                            <div className="col-lg-12 mb-3">
-                                                <div className="d-flex justify-content-between align-items-center">
-                                                    <label className="text-black font-w600 form-label">PIC (Periode)</label>
-                                                    <button type="button" className="btn btn-sm btn-outline-primary" onClick={addPicRow}>
-                                                        Add PIC
-                                                    </button>
-                                                </div>
-
-                                                <div className="table-responsive">
-                                                    <table className="table table-sm">
-                                                        <thead>
-                                                            <tr>
-                                                                <th>PIC</th>
-                                                                <th style={{ width: 160 }}>Start Date</th>
-                                                                <th style={{ width: 160 }}>End Date</th>
-                                                                <th style={{ width: 90 }} />
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {(data.pic_assignments ?? []).map((row, index) => {
-                                                                const errUser = errors[`pic_assignments.${index}.pic_user_id`];
-                                                                const errStart = errors[`pic_assignments.${index}.start_date`];
-                                                                const errEnd = errors[`pic_assignments.${index}.end_date`];
-
-                                                                return (
-                                                                    <tr key={index}>
-                                                                        <td>
-                                                                            <div className="input-group input-group-sm">
-                                                                                <input
-                                                                                    className={`form-control ${errUser ? 'is-invalid' : ''}`}
-                                                                                    placeholder="Select PIC (Active only)..."
-                                                                                    value={(() => {
-                                                                                        const uid = row.pic_user_id ? String(row.pic_user_id) : '';
-                                                                                        if (!uid) return '';
-                                                                                        const u = (users ?? []).find((x) => String(x.id) === uid);
-                                                                                        if (!u) return uid;
-                                                                                        const name = u.full_name || u.name || '';
-                                                                                        const email = u.email ? ` (${u.email})` : '';
-                                                                                        const status = u.status ?? 'Active';
-                                                                                        return status === 'Active' ? `${name}${email}` : `${name}${email} (${status})`;
-                                                                                    })()}
-                                                                                    readOnly
-                                                                                    onClick={() => openPicPicker(index)}
-                                                                                />
-                                                                                <button type="button" className="btn btn-outline-secondary" onClick={() => updatePicRow(index, 'pic_user_id', '')} disabled={!row.pic_user_id}>
-                                                                                    Clear
-                                                                                </button>
-                                                                            </div>
-                                                                            {errUser ? <div className="invalid-feedback">{errUser}</div> : null}
-                                                                        </td>
-                                                                        <td>
-                                                                            <DatePickerInput
-                                                                                value={row.start_date ?? ''}
-                                                                                onChange={(v) => updatePicRow(index, 'start_date', v)}
-                                                                                className="form-control form-control-sm"
-                                                                                invalid={Boolean(errStart)}
-                                                                            />
-                                                                            {errStart ? <div className="invalid-feedback">{errStart}</div> : null}
-                                                                        </td>
-                                                                        <td>
-                                                                            <DatePickerInput
-                                                                                value={row.end_date ?? ''}
-                                                                                onChange={(v) => updatePicRow(index, 'end_date', v)}
-                                                                                className="form-control form-control-sm"
-                                                                                invalid={Boolean(errEnd)}
-                                                                            />
-                                                                            {errEnd ? <div className="invalid-feedback">{errEnd}</div> : null}
-                                                                        </td>
-                                                                        <td className="text-end">
-                                                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removePicRow(index)}>
-                                                                                Remove
-                                                                            </button>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-
-                                            <div className="col-lg-12 mb-3">
+                                            <div className="col-lg-9 mb-3">
                                                 <label className="text-black font-w600 form-label">Project Name</label>
                                                 <input className={`form-control ${errors.project_name ? 'is-invalid' : ''}`} value={data.project_name} onChange={(e) => setData('project_name', e.target.value)} />
                                                 {errors.project_name ? <div className="invalid-feedback">{errors.project_name}</div> : null}
                                             </div>
 
                                             <div className="col-lg-3 mb-3">
+                                                <label className="text-black font-w600 form-label required">Type</label>
+                                                <select className={`form-select ${errors.type ? 'is-invalid' : ''}`} value={data.type} onChange={(e) => setData('type', e.target.value)}>
+                                                    {renderSetupOptions('type', data.type, false)}
+                                                </select>
+                                                {errors.type ? <div className="invalid-feedback">{errors.type}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-3 mb-3">
+                                                <label className="text-black font-w600 form-label">Beginning</label>
+                                                <DatePickerInput value={data.start_date} onChange={(v) => setData('start_date', v)} className="form-control" invalid={Boolean(errors.start_date)} />
+                                                {errors.start_date ? <div className="invalid-feedback">{errors.start_date}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-3 mb-3">
+                                                <label className="text-black font-w600 form-label">Ending</label>
+                                                <DatePickerInput value={data.end_date} onChange={(v) => setData('end_date', v)} className="form-control" invalid={Boolean(errors.end_date)} />
+                                                {errors.end_date ? <div className="invalid-feedback">{errors.end_date}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label">Days</label>
+                                                <input className="form-control" value={computed.totalDays ?? ''} readOnly />
+                                            </div>
+
+                                            <div className="col-lg-3 offset-lg-1 mb-3">
+                                                <label className="text-black font-w600 form-label required">Status</label>
+                                                <select className={`form-select ${errors.status ? 'is-invalid' : ''}`} value={data.status} onChange={(e) => setData('status', e.target.value)}>
+                                                    {renderSetupOptions('status', data.status, false)}
+                                                </select>
+                                                {errors.status ? <div className="invalid-feedback">{errors.status}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-6 mb-3">
                                                 <label className="text-black font-w600 form-label">Assignment</label>
                                                 <select className={`form-select ${errors.assignment ? 'is-invalid' : ''}`} value={data.assignment} onChange={(e) => setData('assignment', e.target.value)}>
                                                     {(assignmentOptions ?? ['', 'Leader', 'Assist']).map((o) => (
@@ -1144,7 +1155,7 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                                 {errors.assignment ? <div className="invalid-feedback">{errors.assignment}</div> : null}
                                             </div>
 
-                                            <div className="col-lg-3 mb-3">
+                                            <div className="col-lg-6 mb-3">
                                                 <label className="text-black font-w600 form-label required">Project Information</label>
                                                 <select className={`form-select ${errors.project_information ? 'is-invalid' : ''}`} value={data.project_information} onChange={(e) => setData('project_information', e.target.value)}>
                                                     {(projectInformationOptions ?? ['Request', 'Submission']).map((o) => (
@@ -1155,114 +1166,250 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                                 </select>
                                                 {errors.project_information ? <div className="invalid-feedback">{errors.project_information}</div> : null}
                                             </div>
+                                            
 
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label required">PIC Assignment</label>
-                                                <select className={`form-select ${errors.pic_assignment ? 'is-invalid' : ''}`} value={data.pic_assignment} onChange={(e) => setData('pic_assignment', e.target.value)}>
-                                                    {(picAssignmentOptions ?? ['Assignment', 'Request']).map((o) => (
-                                                        <option key={o} value={o}>
-                                                            {o}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {errors.pic_assignment ? <div className="invalid-feedback">{errors.pic_assignment}</div> : null}
+                                            <div className="col-lg-12 mb-3">
+                                                <div className="d-flex justify-content-between align-items-center">
+                                                    <label className="text-black font-w600 form-label">PIC (Periode)</label>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={addPicRow}>
+                                                            Add PIC
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="table-responsive">
+                                                    <table className="table table-sm w-100" style={{ tableLayout: 'fixed' }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th style={{ width: '32%' }}>PIC</th>
+                                                                <th style={{ width: '14%' }}>Beginning</th>
+                                                                <th style={{ width: '14%' }}>Ending</th>
+                                                                <th style={{ width: '10%' }}>Days</th>
+                                                                <th style={{ width: '14%' }}>Assignment</th>
+                                                                <th style={{ width: '14%' }}>Status</th>
+                                                                <th style={{ width: '14%' }}>Approve</th>
+                                                                <th style={{ width: '6%' }} />
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {(data.pic_assignments ?? []).map((row, index) => {
+                                                                const errUser = errors[`pic_assignments.${index}.pic_user_id`];
+                                                                const errStart = errors[`pic_assignments.${index}.start_date`];
+                                                                const errEnd = errors[`pic_assignments.${index}.end_date`];
+                                                                const errStatus = errors[`pic_assignments.${index}.status`];
+                                                                const rawState = String(row.release_state ?? 'Open').trim().toLowerCase();
+                                                                const isApproved = rawState === 'approved' || rawState === 'released';
+
+                                                                const startIso = parseDateDdMmmYyToIso(row.start_date);
+                                                                const endIso = parseDateDdMmmYyToIso(row.end_date);
+                                                                const start = startIso ? new Date(startIso + 'T00:00:00') : null;
+                                                                const end = endIso ? new Date(endIso + 'T00:00:00') : null;
+                                                                const days = start && end ? Math.floor((end - start) / (24 * 3600 * 1000)) + 1 : null;
+
+                                                                return (
+                                                                    <tr key={index}>
+                                                                        <td className="align-middle">
+                                                                            <input
+                                                                                className={`form-control form-control-sm ${errUser ? 'is-invalid' : ''}`}
+                                                                                placeholder="Select PIC (Active only)..."
+                                                                                value={(() => {
+                                                                                    const uid = row.pic_user_id ? String(row.pic_user_id) : '';
+                                                                                    if (!uid) return '';
+                                                                                    const u = (users ?? []).find((x) => String(x.id) === uid);
+                                                                                    if (!u) return uid;
+                                                                                    const name = u.full_name || u.name || '';
+                                                                                    return name;
+                                                                                })()}
+                                                                                readOnly
+                                                                                onClick={() => openPicPicker(index)}
+                                                                                disabled={isApproved}
+                                                                            />
+                                                                            {errUser ? <div className="invalid-feedback">{errUser}</div> : null}
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            <DatePickerInput
+                                                                                value={row.start_date ?? ''}
+                                                                                onChange={(v) => updatePicRow(index, 'start_date', v)}
+                                                                                className="form-control form-control-sm"
+                                                                                invalid={Boolean(errStart)}
+                                                                                inputProps={{ style: { minWidth: 0 } }}
+                                                                                disabled={isApproved}
+                                                                            />
+                                                                            {errStart ? <div className="invalid-feedback">{errStart}</div> : null}
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            <DatePickerInput
+                                                                                value={row.end_date ?? ''}
+                                                                                onChange={(v) => updatePicRow(index, 'end_date', v)}
+                                                                                className="form-control form-control-sm"
+                                                                                invalid={Boolean(errEnd)}
+                                                                                inputProps={{ style: { minWidth: 0 } }}
+                                                                                disabled={isApproved}
+                                                                            />
+                                                                            {errEnd ? <div className="invalid-feedback">{errEnd}</div> : null}
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            <input className="form-control form-control-sm" value={days ?? ''} readOnly style={{ minWidth: 0 }} />
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            {isApproved ? (
+                                                                                <input className="form-control form-control-sm" value={row.assignment ?? 'Assignment'} readOnly style={{ minWidth: 0 }} />
+                                                                            ) : (
+                                                                                <select
+                                                                                    className="form-select form-select-sm"
+                                                                                    value={row.assignment ?? 'Assignment'}
+                                                                                    onChange={(e) => updatePicRow(index, 'assignment', e.target.value)}
+                                                                                    style={{ minWidth: 0 }}
+                                                                                >
+                                                                                    {(picAssignmentOptions ?? ['Assignment', 'Request']).map((s) => (
+                                                                                        <option key={s} value={s}>
+                                                                                            {s}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            <select
+                                                                                className={`form-select form-select-sm ${errStatus ? 'is-invalid' : ''}`}
+                                                                                value={row.status ?? 'Scheduled'}
+                                                                                onChange={(e) => updatePicRow(index, 'status', e.target.value)}
+                                                                                style={{ minWidth: 0 }}
+                                                                                disabled={false}
+                                                                            >
+                                                                                {['Tentative', 'Scheduled', 'Running', 'Done', 'Cancelled'].map((s) => (
+                                                                                    <option key={s} value={s}>
+                                                                                        {s}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                            {errStatus ? <div className="invalid-feedback">{errStatus}</div> : null}
+                                                                        </td>
+                                                                        <td className="align-middle">
+                                                                            <select
+                                                                                className="form-select form-select-sm"
+                                                                                value={rawState === 'released' ? 'Approved' : (row.release_state ?? 'Open')}
+                                                                                onChange={(e) => updatePicRow(index, 'release_state', e.target.value)}
+                                                                                disabled={isApproved && !canReopenPicPeriod}
+                                                                            >
+                                                                                <option value="Open">Open</option>
+                                                                                <option value="Approved">Approved</option>
+                                                                            </select>
+                                                                        </td>
+                                                                        <td className="text-end align-middle">
+                                                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => removePicRow(index)} title="Remove" style={{ width: 34, height: 34, padding: 0, lineHeight: 1 }} disabled={isApproved}>
+                                                                                ×
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
 
                                             <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Type</label>
-                                                <select className={`form-select ${errors.type ? 'is-invalid' : ''}`} value={data.type} onChange={(e) => setData('type', e.target.value)}>
-                                                    {renderSetupOptions('type', data.type, false)}
-                                                </select>
-                                                {errors.type ? <div className="invalid-feedback">{errors.type}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Start Date</label>
-                                                <DatePickerInput value={data.start_date} onChange={(v) => setData('start_date', v)} className="form-control" invalid={Boolean(errors.start_date)} />
-                                                {errors.start_date ? <div className="invalid-feedback">{errors.start_date}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">End Date</label>
-                                                <DatePickerInput value={data.end_date} onChange={(v) => setData('end_date', v)} className="form-control" invalid={Boolean(errors.end_date)} />
-                                                {errors.end_date ? <div className="invalid-feedback">{errors.end_date}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Status</label>
-                                                <select className={`form-select ${errors.status ? 'is-invalid' : ''}`} value={data.status} onChange={(e) => setData('status', e.target.value)}>
-                                                    {renderSetupOptions('status', data.status, false)}
-                                                </select>
-                                                {errors.status ? <div className="invalid-feedback">{errors.status}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Handover Official Report</label>
-                                                <DatePickerInput value={data.handover_official_report} onChange={(v) => setData('handover_official_report', v)} className="form-control" invalid={Boolean(errors.handover_official_report)} />
-                                                {errors.handover_official_report ? <div className="invalid-feedback">{errors.handover_official_report}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">KPI 2 - PIC</label>
-                                                <input className={`form-control ${errors.kpi2_pic ? 'is-invalid' : ''}`} value={data.kpi2_pic} onChange={(e) => setData('kpi2_pic', e.target.value)} />
-                                                {errors.kpi2_pic ? <div className="invalid-feedback">{errors.kpi2_pic}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Check Official Report</label>
-                                                <DatePickerInput value={data.check_official_report} onChange={(v) => setData('check_official_report', v)} className="form-control" invalid={Boolean(errors.check_official_report)} />
-                                                {errors.check_official_report ? <div className="invalid-feedback">{errors.check_official_report}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Check Day(s)</label>
-                                                <input className={`form-control ${errors.check_days ? 'is-invalid' : ''}`} value={data.check_days} onChange={(e) => setData('check_days', e.target.value)} />
-                                                {errors.check_days ? <div className="invalid-feedback">{errors.check_days}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">KPI 2 - Officer</label>
-                                                <input className={`form-control ${errors.kpi2_officer ? 'is-invalid' : ''}`} value={data.kpi2_officer} onChange={(e) => setData('kpi2_officer', e.target.value)} />
-                                                {errors.kpi2_officer ? <div className="invalid-feedback">{errors.kpi2_officer}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-2 mb-3">
-                                                <label className="text-black font-w600 form-label">Point Ach</label>
-                                                <input type="number" className={`form-control ${errors.point_ach ? 'is-invalid' : ''}`} value={data.point_ach} onChange={(e) => setData('point_ach', e.target.value)} />
-                                                {errors.point_ach ? <div className="invalid-feedback">{errors.point_ach}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-2 mb-3">
-                                                <label className="text-black font-w600 form-label">Point Req</label>
-                                                <input type="number" className={`form-control ${errors.point_req ? 'is-invalid' : ''}`} value={data.point_req} onChange={(e) => setData('point_req', e.target.value)} />
-                                                {errors.point_req ? <div className="invalid-feedback">{errors.point_req}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-3 mb-3">
-                                                <label className="text-black font-w600 form-label">Validation Date</label>
-                                                <DatePickerInput value={data.validation_date} onChange={(v) => setData('validation_date', v)} className="form-control" invalid={Boolean(errors.validation_date)} />
-                                                {errors.validation_date ? <div className="invalid-feedback">{errors.validation_date}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-5 mb-3">
-                                                <label className="text-black font-w600 form-label">KPI 2 - OKR</label>
-                                                <input className={`form-control ${errors.kpi2_okr ? 'is-invalid' : ''}`} value={data.kpi2_okr} onChange={(e) => setData('kpi2_okr', e.target.value)} />
-                                                {errors.kpi2_okr ? <div className="invalid-feedback">{errors.kpi2_okr}</div> : null}
-                                            </div>
-
-                                            <div className="col-lg-4 mb-3">
-                                                <label className="text-black font-w600 form-label">Spreadsheet ID</label>
+                                                <label className="text-black font-w600 form-label">Activity ID</label>
                                                 <input className={`form-control ${errors.spreadsheet_id ? 'is-invalid' : ''}`} value={data.spreadsheet_id} onChange={(e) => setData('spreadsheet_id', e.target.value)} />
                                                 {errors.spreadsheet_id ? <div className="invalid-feedback">{errors.spreadsheet_id}</div> : null}
                                             </div>
 
-                                            <div className="col-lg-8 mb-3">
-                                                <label className="text-black font-w600 form-label">Spreadsheet URL</label>
+                                            <div className="col-lg-6 mb-3">
+                                                <label className="text-black font-w600 form-label">Activity URL</label>
                                                 <input className={`form-control ${errors.spreadsheet_url ? 'is-invalid' : ''}`} value={data.spreadsheet_url} onChange={(e) => setData('spreadsheet_url', e.target.value)} />
                                                 {errors.spreadsheet_url ? <div className="invalid-feedback">{errors.spreadsheet_url}</div> : null}
                                             </div>
 
                                             <div className="col-lg-3 mb-3">
+                                                <label className="text-black font-w600 form-label">Activity Sent</label>
+                                                <DatePickerInput value={data.activity_sent} onChange={(v) => setData('activity_sent', v)} className="form-control" invalid={Boolean(errors.activity_sent)} />
+                                                {errors.activity_sent ? <div className="invalid-feedback">{errors.activity_sent}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="Handover Official Report - PIC">
+                                                    Handover Official Report - PIC
+                                                </label>
+                                                <DatePickerInput value={data.handover_official_report} onChange={(v) => setData('handover_official_report', v)} className="form-control" invalid={Boolean(errors.handover_official_report)} />
+                                                {errors.handover_official_report ? <div className="invalid-feedback">{errors.handover_official_report}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="Handover Day(s) - PIC">
+                                                    Handover Day(s) - PIC
+                                                </label>
+                                                <input className="form-control" value={computed.handoverDays ?? ''} readOnly />
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="KPI 2 - PIC">
+                                                    KPI 2 - PIC
+                                                </label>
+                                                <input className={`form-control ${errors.kpi2_pic ? 'is-invalid' : ''}`} value={data.kpi2_pic} onChange={(e) => setData('kpi2_pic', e.target.value)} />
+                                                {errors.kpi2_pic ? <div className="invalid-feedback">{errors.kpi2_pic}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="Point Ach">
+                                                    Point Ach
+                                                </label>
+                                                <input type="number" className={`form-control ${errors.point_ach ? 'is-invalid' : ''}`} value={data.point_ach} onChange={(e) => setData('point_ach', e.target.value)} />
+                                                {errors.point_ach ? <div className="invalid-feedback">{errors.point_ach}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="Point Req">
+                                                    Point Req
+                                                </label>
+                                                <input type="number" className={`form-control ${errors.point_req ? 'is-invalid' : ''}`} value={data.point_req} onChange={(e) => setData('point_req', e.target.value)} />
+                                                {errors.point_req ? <div className="invalid-feedback">{errors.point_req}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
+                                                <label className="text-black font-w600 form-label d-block text-truncate" style={{ maxWidth: '100%' }} title="% of Point">
+                                                    % of Point
+                                                </label>
+                                                <input className="form-control" value={computed.percentage ?? ''} readOnly />
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">Check Official Report - Admin Officer</label>
+                                                <DatePickerInput value={data.check_official_report} onChange={(v) => setData('check_official_report', v)} className="form-control" invalid={Boolean(errors.check_official_report)} />
+                                                {errors.check_official_report ? <div className="invalid-feedback">{errors.check_official_report}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">Check Day(s) - Admin Officer</label>
+                                                <input className={`form-control ${errors.check_days ? 'is-invalid' : ''}`} value={data.check_days} onChange={(e) => setData('check_days', e.target.value)} />
+                                                {errors.check_days ? <div className="invalid-feedback">{errors.check_days}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">KPI 2 - Admin Officer</label>
+                                                <input className={`form-control ${errors.kpi2_officer ? 'is-invalid' : ''}`} value={data.kpi2_officer} onChange={(e) => setData('kpi2_officer', e.target.value)} />
+                                                {errors.kpi2_officer ? <div className="invalid-feedback">{errors.kpi2_officer}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">Validation Date - OKR</label>
+                                                <DatePickerInput value={data.validation_date} onChange={(v) => setData('validation_date', v)} className="form-control" invalid={Boolean(errors.validation_date)} />
+                                                {errors.validation_date ? <div className="invalid-feedback">{errors.validation_date}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">Check Day(s) - OKR</label>
+                                                <input className="form-control" value={computed.validationDays ?? ''} readOnly />
+                                            </div>
+
+                                            <div className="col-lg-4 mb-3">
+                                                <label className="text-black font-w600 form-label">KPI 2 - OKR</label>
+                                                <input className={`form-control ${errors.kpi2_okr ? 'is-invalid' : ''}`} value={data.kpi2_okr} onChange={(e) => setData('kpi2_okr', e.target.value)} />
+                                                {errors.kpi2_okr ? <div className="invalid-feedback">{errors.kpi2_okr}</div> : null}
+                                            </div>
+
+                                            <div className="col-lg-2 mb-3">
                                                 <label className="text-black font-w600 form-label">S1 Estimation Date</label>
                                                 <DatePickerInput value={data.s1_estimation_date} onChange={(v) => setData('s1_estimation_date', v)} className="form-control" invalid={Boolean(errors.s1_estimation_date)} />
                                                 {errors.s1_estimation_date ? <div className="invalid-feedback">{errors.s1_estimation_date}</div> : null}
@@ -1274,21 +1421,21 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                                 {errors.s1_over_days ? <div className="invalid-feedback">{errors.s1_over_days}</div> : null}
                                             </div>
 
-                                            <div className="col-lg-2 mb-3">
+                                            <div className="col-lg-3 mb-3">
                                                 <label className="text-black font-w600 form-label">S1 Count Email(s) Sent</label>
                                                 <input className={`form-control ${errors.s1_count_emails_sent ? 'is-invalid' : ''}`} value={data.s1_count_emails_sent} onChange={(e) => setData('s1_count_emails_sent', e.target.value)} />
                                                 {errors.s1_count_emails_sent ? <div className="invalid-feedback">{errors.s1_count_emails_sent}</div> : null}
                                             </div>
 
-                                            <div className="col-lg-3 mb-3">
+                                            <div className="col-lg-2 mb-3">
                                                 <label className="text-black font-w600 form-label">S2 Email Sent</label>
-                                                <input className={`form-control ${errors.s2_email_sent ? 'is-invalid' : ''}`} value={data.s2_email_sent} onChange={(e) => setData('s2_email_sent', e.target.value)} />
+                                                <DatePickerInput value={data.s2_email_sent} onChange={(v) => setData('s2_email_sent', v)} className="form-control" invalid={Boolean(errors.s2_email_sent)} />
                                                 {errors.s2_email_sent ? <div className="invalid-feedback">{errors.s2_email_sent}</div> : null}
                                             </div>
 
                                             <div className="col-lg-3 mb-3">
                                                 <label className="text-black font-w600 form-label">S3 Email Sent</label>
-                                                <input className={`form-control ${errors.s3_email_sent ? 'is-invalid' : ''}`} value={data.s3_email_sent} onChange={(e) => setData('s3_email_sent', e.target.value)} />
+                                                <DatePickerInput value={data.s3_email_sent} onChange={(v) => setData('s3_email_sent', v)} className="form-control" invalid={Boolean(errors.s3_email_sent)} />
                                                 {errors.s3_email_sent ? <div className="invalid-feedback">{errors.s3_email_sent}</div> : null}
                                             </div>
                                         </div>

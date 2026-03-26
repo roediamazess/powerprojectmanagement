@@ -29,6 +29,11 @@ export default function DatePickerInput({
 }) {
     const inputRef = useRef(null);
     const readyRef = useRef(false);
+    const onChangeRef = useRef(onChange);
+
+    useEffect(() => {
+        onChangeRef.current = onChange;
+    }, [onChange]);
 
     const mergedClassName = useMemo(() => {
         const base = className ? String(className) : '';
@@ -51,7 +56,7 @@ export default function DatePickerInput({
         $el.datepicker(opts).on('changeDate', (e) => {
             const iso = dateToIsoLocal(e.date);
             const formatted = iso ? formatDateDdMmmYy(iso) : '';
-            if (typeof onChange === 'function') onChange(formatted);
+            if (typeof onChangeRef.current === 'function') onChangeRef.current(formatted);
             setTimeout(() => {
                 if (inputRef.current) inputRef.current.value = formatted;
             }, 0);

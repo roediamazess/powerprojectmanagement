@@ -12,6 +12,7 @@
         <link rel="stylesheet" href="{{ asset('vendor/nouislider/nouislider.min.css') }}">
         <link href="{{ asset('vendor/fullcalendar/css/main.min.css') }}" rel="stylesheet">
         <link href="{{ asset('vendor/bootstrap-datepicker-master/css/bootstrap-datepicker.min.css') }}" rel="stylesheet">
+        <link href="{{ asset('vendor/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet">
         <link href="{{ asset('css/style.css') }}" rel="stylesheet">
 
         <!-- Scripts -->
@@ -42,6 +43,7 @@
         <script src="{{ asset('vendor/fullcalendar/js/main.min.js') }}"></script>
         <script src="{{ asset('vendor/moment/moment.min.js') }}"></script>
         <script src="{{ asset('vendor/bootstrap-datepicker-master/js/bootstrap-datepicker.min.js') }}"></script>
+        <script src="{{ asset('vendor/sweetalert2/sweetalert2.min.js') }}"></script>
         <script src="{{ asset('js/custom.min.js') }}"></script>
         <script src="{{ asset('js/dlabnav-init.js') }}"></script>
         <script src="{{ asset('js/sidebar-right.js') }}"></script>

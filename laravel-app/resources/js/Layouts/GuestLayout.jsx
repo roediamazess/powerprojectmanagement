@@ -9,8 +9,8 @@ export default function GuestLayout({ children }) {
                         <div className="card mb-0 h-auto">
                             <div className="card-body">
                                 <div className="text-center mb-3">
-                                    <Link href={route('dashboard')}>
-                                        <img className="logo-auth" src="/images/logo-full.png" alt="" />
+                                    <Link href={route('dashboard')} className="d-flex flex-column align-items-center text-decoration-none">
+                                        <img className="logo-auth" src="/images/power-pro-logo-plain.png?v=20260326" alt="Power Pro Logo" style={{ maxWidth: '140px' }} />
                                     </Link>
                                 </div>
                                 {children}

@@ -68,8 +68,27 @@ export default function ProjectSetupIndex({ category, categories, options, pageS
         });
     };
 
-    const doDelete = (o) => {
-        if (!window.confirm(`Delete option: ${o.name}?`)) return;
+    const doDelete = async (o) => {
+        const label = o.name;
+
+        if (typeof window !== 'undefined' && window.Swal?.fire) {
+            const result = await window.Swal.fire({
+                title: 'Hapus option?',
+                text: `Option: ${label}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+            if (!result.isConfirmed) return;
+        } else {
+            if (!window.confirm(`Delete option: ${label}?`)) return;
+        }
+
         destroy(route('tables.project-setup.destroy', { option: o.id }), {
             preserveScroll: true,
         });

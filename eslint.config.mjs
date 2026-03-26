@@ -20,6 +20,12 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/**",
     "envato-template/**",
+    "laravel-app/**",
+    "laravel-app-prebuilt-*/**",
+    "laravel-backend/**",
+    "**/vendor/**",
+    "**/storage/**",
+    "**/bootstrap/cache/**",
   ]),
 ]);
 

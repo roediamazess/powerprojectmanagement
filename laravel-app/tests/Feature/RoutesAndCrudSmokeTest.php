@@ -63,29 +63,169 @@ class RoutesAndCrudSmokeTest extends TestCase
 
         $this->get('/projects')->assertStatus(200);
 
+        $partner = Partner::query()->create([
+            'cnc_id' => 'CNC-PROJ-001',
+            'name' => 'Project Partner',
+            'status' => 'Active',
+        ]);
+        $pic = User::factory()->create();
+
         $resp = $this->post('/projects', [
+            'partner_id' => $partner->id,
+            'cnc_id' => 'CNC-TEST-004',
+            'project_name' => 'Smoke Project Create',
+            'assignment' => 'Leader',
+            'project_information' => 'Submission',
+            'pic_assignment' => 'Request',
+            'pic_period_state' => 'Open',
+            'type' => 'Maintenance',
+            'status' => 'Scheduled',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-10',
+            'spreadsheet_id' => 'ACT-001',
+            'spreadsheet_url' => 'https://example.test/activity/1',
+            'activity_sent' => '2026-03-02',
+            'handover_official_report' => '2026-03-10',
+            'kpi2_pic' => 'PIC KPI',
+            'point_ach' => 10,
+            'point_req' => 20,
+            'check_official_report' => '2026-03-12',
+            'check_days' => '2',
+            'kpi2_officer' => 'Officer KPI',
+            'validation_date' => '2026-03-15',
+            'kpi2_okr' => 'OKR KPI',
+            's1_estimation_date' => '2026-03-20',
+            's1_over_days' => '1',
+            's1_count_emails_sent' => '3',
+            's2_email_sent' => '2026-03-21',
+            's3_email_sent' => '2026-03-22',
+            'pic_assignments' => [
+                [
+                    'pic_user_id' => $pic->id,
+                    'start_date' => '2026-03-01',
+                    'end_date' => '2026-03-05',
+                    'status' => 'Running',
+                ],
+            ],
+        ]);
+        $resp->assertRedirectToRoute('projects.index');
+        $this->assertDatabaseHas('projects', ['type' => 'Maintenance', 'status' => 'Scheduled', 'project_name' => 'Smoke Project Create']);
+
+        $project = DB::table('projects')->orderByDesc('id')->first();
+        $assignmentId = DB::table('project_pic_assignments')->where('project_id', $project->id)->value('id');
+        $this->assertDatabaseHas('project_pic_assignments', [
+            'project_id' => $project->id,
+            'pic_user_id' => $pic->id,
+            'status' => 'Running',
+        ]);
+
+        // Set row to Approved (per-row lock)
+        $resp = $this->put("/projects/{$project->id}", [
             'project_information' => 'Submission',
             'pic_assignment' => 'Request',
             'type' => 'Maintenance',
             'status' => 'Scheduled',
+            'project_name' => 'Smoke Project Create',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-10',
+            'pic_assignments' => [
+                [
+                    'id' => $assignmentId,
+                    'pic_user_id' => $pic->id,
+                    'start_date' => '2026-03-01',
+                    'end_date' => '2026-03-05',
+                    'status' => 'Running',
+                    'release_state' => 'Approved',
+                ],
+            ],
         ]);
         $resp->assertRedirectToRoute('projects.index');
-        $this->assertDatabaseHas('projects', ['type' => 'Maintenance', 'status' => 'Scheduled']);
 
-        $project = DB::table('projects')->orderByDesc('id')->first();
+        // Change Status on Approved row → allowed
+        $resp = $this->put("/projects/{$project->id}", [
+            'project_information' => 'Submission',
+            'pic_assignment' => 'Request',
+            'type' => 'Maintenance',
+            'status' => 'Scheduled',
+            'project_name' => 'Smoke Project Create',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-10',
+            'pic_assignments' => [
+                [
+                    'id' => $assignmentId,
+                    'pic_user_id' => $pic->id,
+                    'start_date' => '2026-03-01',
+                    'end_date' => '2026-03-05',
+                    'status' => 'Done',
+                    'release_state' => 'Approved',
+                ],
+            ],
+        ]);
+        $this->assertDatabaseHas('project_pic_assignments', [
+            'project_id' => $project->id,
+            'pic_user_id' => $pic->id,
+            'status' => 'Done',
+        ]);
+
+        // Change Beginning on Approved row → should error
+        $resp = $this->put("/projects/{$project->id}", [
+            'project_information' => 'Submission',
+            'pic_assignment' => 'Request',
+            'type' => 'Maintenance',
+            'status' => 'Scheduled',
+            'project_name' => 'Smoke Project Create',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-10',
+            'pic_assignments' => [
+                [
+                    'id' => $assignmentId,
+                    'pic_user_id' => $pic->id,
+                    'start_date' => '2026-03-02',
+                    'end_date' => '2026-03-05',
+                    'status' => 'Done',
+                    'release_state' => 'Approved',
+                ],
+            ],
+        ]);
+        $resp->assertStatus(302);
+        $resp->assertSessionHasErrors(['pic_assignments']);
+        $this->assertDatabaseHas('project_pic_assignments', [
+            'project_id' => $project->id,
+            'id' => $assignmentId,
+            'status' => 'Done',
+        ]);
+
         $resp = $this->put("/projects/{$project->id}", [
             'project_information' => 'Submission',
             'pic_assignment' => 'Request',
             'type' => 'Maintenance',
             'status' => 'Scheduled',
             'project_name' => 'Smoke Project',
+            'start_date' => '2026-03-01',
+            'end_date' => '2026-03-10',
+            'pic_assignments' => [
+                [
+                    'id' => $assignmentId,
+                    'pic_user_id' => $pic->id,
+                    'start_date' => '2026-03-01',
+                    'end_date' => '2026-03-05',
+                    'status' => 'Done',
+                    'release_state' => 'Open',
+                ],
+            ],
         ]);
         $resp->assertRedirectToRoute('projects.index');
         $this->assertDatabaseHas('projects', ['id' => $project->id, 'project_name' => 'Smoke Project']);
+        $this->assertDatabaseHas('project_pic_assignments', [
+            'project_id' => $project->id,
+            'pic_user_id' => $pic->id,
+            'status' => 'Done',
+        ]);
 
         $resp = $this->delete("/projects/{$project->id}");
         $resp->assertRedirectToRoute('projects.index');
         $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+        $this->assertDatabaseMissing('project_pic_assignments', ['project_id' => $project->id]);
     }
 
     public function test_time_boxing_crud_routes_and_db_updates(): void

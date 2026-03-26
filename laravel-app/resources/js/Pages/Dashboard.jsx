@@ -140,7 +140,7 @@ function Dashboard() {
                                             <div className="col-xl-7 col-sm-7">
                                                 <h2 className="mb-0">Manage your project in one touch</h2>
                                                 <span>
-                                                    Let Fillow manage your project automatically with our best AI
+                                                    Let Power Project Management manage your project automatically with our best AI
                                                     systems
                                                 </span>
                                                 <a href="#" className="btn btn-rounded">
@@ -380,7 +380,7 @@ function Dashboard() {
                                                     </div>
                                                     <div className="ms-3">
                                                         <a href="#">
-                                                            <h4 className="fs-18 font-w500">Fillow Final UseCase Diagram</h4>
+                                                            <h4 className="fs-18 font-w500">Power Project Management Final UseCase Diagram</h4>
                                                         </a>
                                                         <p className="text-black mb-0">
                                                             Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
@@ -538,7 +538,7 @@ function Dashboard() {
                                                     <div className="owl-carousel card-slider">
                                                         <div className="items">
                                                             <h4 className="card-title mb-4">
-                                                                Fillow Company Profile Website Project
+                                                                Power Project Management Company Profile Website Project
                                                             </h4>
                                                             <span className="fs-14 font-w400 text-black">
                                                                 Lorem ipsum dolor sit, amet consectetur adipisicing elit.
@@ -548,7 +548,7 @@ function Dashboard() {
                                                         </div>
                                                         <div className="items">
                                                             <h4 className="fs-20 font-w700 mb-4">
-                                                                Fillow Company Profile Website Project
+                                                                Power Project Management Company Profile Website Project
                                                             </h4>
                                                             <span className="fs-14 font-w400 text-black">
                                                                 Lorem ipsum dolor, sit amet consectetur adipisicing elit.
@@ -558,7 +558,7 @@ function Dashboard() {
                                                         </div>
                                                         <div className="items">
                                                             <h4 className="fs-20 font-w700 mb-4">
-                                                                Fillow Company Profile Website Project
+                                                                Power Project Management Company Profile Website Project
                                                             </h4>
                                                             <span className="fs-14 font-w400 text-black">
                                                                 Lorem ipsum dolor, sit amet consectetur adipisicing elit.

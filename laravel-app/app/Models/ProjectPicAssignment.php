@@ -14,6 +14,9 @@ class ProjectPicAssignment extends Model
         'pic_email',
         'start_date',
         'end_date',
+        'assignment',
+        'status',
+        'release_state',
     ];
 
     protected $casts = [

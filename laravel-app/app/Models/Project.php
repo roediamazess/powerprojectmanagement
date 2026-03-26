@@ -25,6 +25,7 @@ class Project extends Model
         'assignment',
         'project_information',
         'pic_assignment',
+        'pic_period_state',
         'type',
         'start_date',
         'end_date',

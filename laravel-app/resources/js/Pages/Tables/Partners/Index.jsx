@@ -242,8 +242,27 @@ export default function PartnersIndex({ partners, filters, starOptions, statusOp
         });
     };
 
-    const doDelete = (p) => {
-        if (!window.confirm(`Delete partner: ${p.name} (${p.cnc_id})?`)) return;
+    const doDelete = async (p) => {
+        const label = `${p.name} (${p.cnc_id})`;
+
+        if (typeof window !== 'undefined' && window.Swal?.fire) {
+            const result = await window.Swal.fire({
+                title: 'Hapus partner?',
+                text: `Partner: ${label}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, hapus',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                reverseButtons: true,
+                focusCancel: true,
+            });
+            if (!result.isConfirmed) return;
+        } else {
+            if (!window.confirm(`Delete partner: ${label}?`)) return;
+        }
+
         destroy(route('partners.destroy', { partner: p.id }, false), {
             preserveScroll: true,
         });

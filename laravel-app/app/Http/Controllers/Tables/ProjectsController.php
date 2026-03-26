@@ -37,6 +37,16 @@ class ProjectsController extends Controller
         'Request',
     ];
 
+    private const PIC_PERIOD_STATUS_OPTIONS = [
+        'Tentative',
+        'Scheduled',
+        'Running',
+        'Done',
+        'Cancelled',
+    ];
+
+    private const PIC_PERIOD_STATE_OPTIONS = ['Open', 'Approved'];
+
     private const SETUP_CATEGORIES = [
         'type',
         'status',
@@ -158,6 +168,9 @@ class ProjectsController extends Controller
             ->map(fn ($items) => $items->map(fn ($o) => ['name' => $o->name, 'status' => $o->status])->values())
             ->toArray();
 
+        $user = $request->user();
+        $canReopenPicPeriod = $user ? ($user->can('projects.pic_period.reopen') || (method_exists($user, 'hasRole') && $user->hasRole('Administrator'))) : false;
+
         return Inertia::render('Tables/Projects/Index', [
             'projects' => $projects,
             'filters' => [
@@ -170,6 +183,7 @@ class ProjectsController extends Controller
                 'sort_by' => $sortBy,
                 'sort_dir' => $sortDir,
             ],
+            'canReopenPicPeriod' => $canReopenPicPeriod,
             'partners' => $partners,
             'users' => $users,
             'setupOptions' => $setupOptions,
@@ -195,6 +209,9 @@ class ProjectsController extends Controller
                 'pic_email' => $a->pic_email,
                 'start_date' => $a->start_date?->toDateString(),
                 'end_date' => $a->end_date?->toDateString(),
+                'assignment' => $a->assignment ?? 'Assignment',
+                'status' => $a->status,
+                'release_state' => $a->release_state === 'Released' ? 'Approved' : ($a->release_state ?? 'Open'),
             ])->values(),
             'pic_summary' => $p->picAssignments->pluck('pic_name')->filter()->unique()->values()->implode(', '),
             'partner_id' => $p->partner_id,
@@ -203,6 +220,7 @@ class ProjectsController extends Controller
             'assignment' => $p->assignment,
             'project_information' => $p->project_information,
             'pic_assignment' => $p->pic_assignment,
+            'pic_period_state' => $p->pic_period_state,
             'type' => $p->type,
             'start_date' => $p->start_date?->toDateString(),
             'end_date' => $p->end_date?->toDateString(),
@@ -240,7 +258,8 @@ class ProjectsController extends Controller
         $data = $this->validateProject($request);
 
         $picAssignments = $this->normalizePicAssignments($data);
-        unset($data['pic_assignments']);
+        $data['pic_period_state'] = $data['pic_period_state'] ?? 'Open';
+        $data['pic_assignments'] = $picAssignments;
 
         DB::transaction(function () use ($request, $data, $picAssignments) {
             $project = Project::query()->create($this->enrichAndCompute($data));
@@ -255,10 +274,11 @@ class ProjectsController extends Controller
 
     public function update(Request $request, Project $project): RedirectResponse
     {
-        $data = $this->validateProject($request);
+        $data = $this->validateProject($request, $project);
 
         $picAssignments = $this->normalizePicAssignments($data);
-        unset($data['pic_assignments']);
+        $data['pic_period_state'] = $data['pic_period_state'] ?? ($project->pic_period_state ?? 'Open');
+        $data['pic_assignments'] = $picAssignments;
 
         DB::transaction(function () use ($request, $project, $data, $picAssignments) {
             $before = $this->projectSnapshot($project->fresh());
@@ -293,7 +313,7 @@ class ProjectsController extends Controller
         return redirect()->route('projects.index');
     }
 
-    private function validateProject(Request $request): array
+    private function validateProject(Request $request, ?Project $project = null): array
     {
         $rules = [
             'cnc_id' => ['nullable', 'string', 'max:50'],
@@ -302,7 +322,8 @@ class ProjectsController extends Controller
             'project_name' => ['nullable', 'string'],
             'assignment' => ['nullable', 'string', Rule::in(self::ASSIGNMENT_OPTIONS)],
             'project_information' => ['required', 'string', Rule::in(self::PROJECT_INFORMATION_OPTIONS)],
-            'pic_assignment' => ['required', 'string', Rule::in(self::PIC_ASSIGNMENT_OPTIONS)],
+            'pic_assignment' => ['nullable', 'string', Rule::in(self::PIC_ASSIGNMENT_OPTIONS)],
+            'pic_period_state' => ['nullable', 'string', Rule::in(self::PIC_PERIOD_STATE_OPTIONS)],
             'type' => ['required', 'string', 'max:255', Rule::exists('project_setup_options', 'name')->where(fn ($q) => $q->where('category', 'type'))],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date'],
@@ -325,14 +346,18 @@ class ProjectsController extends Controller
             's2_email_sent' => ['nullable', 'string'],
             's3_email_sent' => ['nullable', 'string'],
             'pic_assignments' => ['nullable', 'array'],
+            'pic_assignments.*.id' => ['nullable', 'integer'],
             'pic_assignments.*.pic_user_id' => ['nullable', 'integer', 'exists:users,id'],
             'pic_assignments.*.start_date' => ['nullable', 'date'],
             'pic_assignments.*.end_date' => ['nullable', 'date'],
+            'pic_assignments.*.assignment' => ['nullable', 'string', Rule::in(self::PIC_ASSIGNMENT_OPTIONS)],
+            'pic_assignments.*.status' => ['required', 'string', Rule::in(self::PIC_PERIOD_STATUS_OPTIONS)],
+            'pic_assignments.*.release_state' => ['nullable', 'string', Rule::in(self::PIC_PERIOD_STATE_OPTIONS)],
         ];
 
         $validator = Validator::make($request->all(), $rules);
 
-        $validator->after(function ($validator) use ($request) {
+        $validator->after(function ($validator) use ($request, $project) {
             $data = $request->all();
             $projectStartRaw = $data['start_date'] ?? null;
             $projectEndRaw = $data['end_date'] ?? null;
@@ -374,6 +399,7 @@ class ProjectsController extends Controller
                 $rowStartRaw = $row['start_date'] ?? null;
                 $rowEndRaw = $row['end_date'] ?? null;
                 $rowPicUserId = $row['pic_user_id'] ?? null;
+                $rowStatus = $row['status'] ?? null;
 
                 if (! empty($rowPicUserId) && ! $rowStartRaw) {
                     $validator->errors()->add("pic_assignments.{$i}.start_date", 'Wajib diisi jika PIC dipilih.');
@@ -381,6 +407,10 @@ class ProjectsController extends Controller
 
                 if (! empty($rowPicUserId) && ! $rowEndRaw) {
                     $validator->errors()->add("pic_assignments.{$i}.end_date", 'Wajib diisi jika PIC dipilih.');
+                }
+
+                if (! empty($rowPicUserId) && ! $rowStatus) {
+                    $validator->errors()->add("pic_assignments.{$i}.status", 'Wajib diisi jika PIC dipilih.');
                 }
 
 
@@ -406,6 +436,75 @@ class ProjectsController extends Controller
                     $validator->errors()->add("pic_assignments.{$i}.end_date", 'End Date tidak boleh sebelum Start Date.');
                 }
             }
+
+            if (! $project) {
+                return;
+            }
+            // Abaikan kunci level proyek; kunci diterapkan per-row release_state saja.
+
+            // Selalu jalankan enforcement per-row
+            {
+                $user = $request->user();
+                $isAdmin = $user && method_exists($user, 'hasRole') ? $user->hasRole('Administrator') : false;
+                $canReopen = $user ? $user->can('projects.pic_period.reopen') : false;
+
+                $existingById = $project->picAssignments()
+                    ->orderBy('start_date')
+                    ->orderBy('id')
+                    ->get()
+                    ->filter(fn ($a) => $a->pic_user_id !== null || $a->start_date !== null || $a->end_date !== null)
+                    ->keyBy('id');
+
+                $incoming = $this->normalizePicAssignments($data);
+                $incomingById = collect($incoming)
+                    ->filter(fn ($r) => ! empty($r['id']))
+                    ->keyBy(fn ($r) => (int) $r['id']);
+
+                // Approved rows cannot be removed unless reopened
+                foreach ($existingById as $id => $a) {
+                    $prevState = $a->release_state === 'Released' ? 'Approved' : ($a->release_state ?? 'Open');
+                    if ($prevState !== 'Approved') continue;
+                    if (! $incomingById->has((int) $id)) {
+                        $validator->errors()->add('pic_assignments', 'Ada PIC Periode berstatus Approved yang dihapus. Reopen baris tersebut (Open) dulu untuk mengubah.');
+                        break;
+                    }
+                }
+
+                // Enforce per-row locking rules based on existing row state
+                foreach ($incomingById as $id => $row) {
+                    if (! $existingById->has($id)) continue;
+                    $a = $existingById->get($id);
+
+                    $prevState = $a->release_state === 'Released' ? 'Approved' : ($a->release_state ?? 'Open');
+                    $nextState = ($row['release_state'] ?? $prevState) === 'Released' ? 'Approved' : ($row['release_state'] ?? $prevState);
+
+                    if ($prevState === 'Approved') {
+                        if ($nextState === 'Open') {
+                            if (! ($isAdmin || $canReopen)) {
+                                $validator->errors()->add('pic_assignments', 'Hanya Administrator yang dapat Reopen (Approved → Open) baris PIC.');
+                                break;
+                            }
+                            continue;
+                        }
+
+                        // When Approved, PIC/Beginning/Ending cannot change; Status may change
+                        $incomingPic = $row['pic_user_id'] ?? null;
+                        $incomingStart = $row['start_date'] ?? null;
+                        $incomingEnd = $row['end_date'] ?? null;
+
+                        $existingPic = $a->pic_user_id;
+                        $existingStart = $a->start_date?->toDateString();
+                        $existingEnd = $a->end_date?->toDateString();
+
+                        if ((string) ($incomingPic ?? '') !== (string) ($existingPic ?? '')
+                            || (string) ($incomingStart ?? '') !== (string) ($existingStart ?? '')
+                            || (string) ($incomingEnd ?? '') !== (string) ($existingEnd ?? '')) {
+                            $validator->errors()->add('pic_assignments', 'PIC Periode berstatus Approved tidak bisa mengubah PIC/Beginning/Ending. Reopen (Open) dulu untuk mengubah.');
+                            break;
+                        }
+                    }
+                }
+            }
         });
 
         return $validator->validate();
@@ -419,11 +518,26 @@ class ProjectsController extends Controller
         if (is_array($items) && count($items) > 0) {
             return collect($items)
                 ->filter(fn ($r) => is_array($r))
-                ->map(fn ($r) => [
-                    'pic_user_id' => $r['pic_user_id'] ?? null,
-                    'start_date' => $r['start_date'] ?? null,
-                    'end_date' => $r['end_date'] ?? null,
-                ])
+                ->map(function ($r) {
+                    $state = $r['release_state'] ?? 'Open';
+                    if ($state === 'Released') $state = 'Approved';
+                    if ($state !== 'Approved') $state = 'Open';
+
+                    return [
+                        'id' => $r['id'] ?? null,
+                        'pic_user_id' => $r['pic_user_id'] ?? null,
+                        'start_date' => $r['start_date'] ?? null,
+                        'end_date' => $r['end_date'] ?? null,
+                        'assignment' => ($r['assignment'] ?? null) ?: 'Assignment',
+                        'status' => ($r['status'] ?? null) ?: 'Scheduled',
+                        'release_state' => $state,
+                    ];
+                })
+                ->filter(function ($r) {
+                    return ($r['pic_user_id'] ?? null) !== null
+                        || ! empty($r['start_date'] ?? null)
+                        || ! empty($r['end_date'] ?? null);
+                })
                 ->values()
                 ->all();
         }
@@ -433,6 +547,9 @@ class ProjectsController extends Controller
                 'pic_user_id' => $data['pic_user_id'],
                 'start_date' => $data['start_date'] ?? null,
                 'end_date' => $data['end_date'] ?? null,
+                'assignment' => 'Assignment',
+                'status' => 'Scheduled',
+                'release_state' => 'Open',
             ]];
         }
 
@@ -441,34 +558,102 @@ class ProjectsController extends Controller
 
     private function syncPicAssignments(Project $project, array $assignments, Request $request): void
     {
-        $beforeAssignments = $project->picAssignments()->get();
+        $existing = $project->picAssignments()->get()->keyBy('id');
 
-        foreach ($beforeAssignments as $a) {
-            AuditLog::record($request, 'delete', ProjectPicAssignment::class, (string) $a->id, $a->toArray(), null, [
-                'project_id' => (string) $project->id,
-            ]);
-        }
+        $incoming = collect($assignments)
+            ->filter(fn ($r) => is_array($r))
+            ->map(function ($r) {
+                $state = $r['release_state'] ?? 'Open';
+                if ($state === 'Released') $state = 'Approved';
+                if ($state !== 'Approved') $state = 'Open';
 
-        $project->picAssignments()->delete();
+                return [
+                    'id' => $r['id'] ?? null,
+                    'pic_user_id' => $r['pic_user_id'] ?? null,
+                    'start_date' => $r['start_date'] ?? null,
+                    'end_date' => $r['end_date'] ?? null,
+                    'assignment' => ($r['assignment'] ?? null) ?: 'Assignment',
+                    'status' => ($r['status'] ?? null) ?: 'Scheduled',
+                    'release_state' => $state,
+                ];
+            })
+            ->filter(function ($r) {
+                return ($r['pic_user_id'] ?? null) !== null
+                    || ! empty($r['start_date'] ?? null)
+                    || ! empty($r['end_date'] ?? null);
+            })
+            ->values();
 
-        foreach ($assignments as $a) {
+        $seenIds = [];
+
+        foreach ($incoming as $row) {
+            $id = $row['id'] ? (int) $row['id'] : null;
+
             $user = null;
-            if (! empty($a['pic_user_id'])) {
-                $user = User::query()->find($a['pic_user_id']);
+            if (! empty($row['pic_user_id'])) {
+                $user = User::query()->find($row['pic_user_id']);
+            }
+
+            $payload = [
+                'pic_user_id' => $row['pic_user_id'] ?? null,
+                'pic_name' => $user?->name,
+                'pic_email' => $user?->email,
+                'start_date' => $row['start_date'] ?? null,
+                'end_date' => $row['end_date'] ?? null,
+                'assignment' => ($row['assignment'] ?? null) ?: 'Assignment',
+                'status' => ($row['status'] ?? null) ?: 'Scheduled',
+                'release_state' => $row['release_state'] ?? 'Open',
+            ];
+
+            if ($id && $existing->has($id)) {
+                $model = $existing->get($id);
+                if ((int) $model->project_id !== (int) $project->id) {
+                    continue;
+                }
+
+                $isApproved = in_array(($model->release_state ?? 'Open'), ['Approved', 'Released'], true);
+                if ($isApproved) {
+                    $payload['pic_user_id'] = $model->pic_user_id;
+                    $payload['pic_name'] = $model->pic_name;
+                    $payload['pic_email'] = $model->pic_email;
+                    $payload['start_date'] = $model->start_date?->toDateString();
+                    $payload['end_date'] = $model->end_date?->toDateString();
+                    $payload['assignment'] = $model->assignment ?? 'Assignment';
+                    $payload['release_state'] = $model->release_state === 'Released' ? 'Approved' : ($model->release_state ?? 'Approved');
+                }
+
+                $before = $model->fresh()->toArray();
+                $model->fill($payload);
+                $model->save();
+                $after = $model->fresh()->toArray();
+                AuditLog::record($request, 'update', ProjectPicAssignment::class, (string) $model->id, $before, $after, [
+                    'project_id' => (string) $project->id,
+                ]);
+
+                $seenIds[] = $id;
+                continue;
             }
 
             $created = ProjectPicAssignment::query()->create([
                 'project_id' => $project->id,
-                'pic_user_id' => $a['pic_user_id'] ?? null,
-                'pic_name' => $user?->name,
-                'pic_email' => $user?->email,
-                'start_date' => $a['start_date'] ?? null,
-                'end_date' => $a['end_date'] ?? null,
+                ...$payload,
             ]);
-
             AuditLog::record($request, 'create', ProjectPicAssignment::class, (string) $created->id, null, $created->fresh()->toArray(), [
                 'project_id' => (string) $project->id,
             ]);
+            $seenIds[] = (int) $created->id;
+        }
+
+        foreach ($existing as $id => $model) {
+            if (in_array((int) $id, $seenIds, true)) continue;
+            if (in_array(($model->release_state ?? 'Open'), ['Approved', 'Released'], true)) {
+                continue;
+            }
+            $before = $model->toArray();
+            AuditLog::record($request, 'delete', ProjectPicAssignment::class, (string) $model->id, $before, null, [
+                'project_id' => (string) $project->id,
+            ]);
+            $model->delete();
         }
 
         $project->load(['picAssignments' => fn ($q) => $q->orderBy('start_date')->orderBy('id')]);
@@ -550,6 +735,8 @@ class ProjectsController extends Controller
                 'pic_email' => $a->pic_email,
                 'start_date' => $a->start_date?->toDateString(),
                 'end_date' => $a->end_date?->toDateString(),
+                'assignment' => $a->assignment ?? 'Assignment',
+                'status' => $a->status,
             ])
             ->values()
             ->all();

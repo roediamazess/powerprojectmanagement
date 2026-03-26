@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\EnsureTenantContext::class,
         ]);
 
+        $middleware->redirectGuestsTo(fn () => '/');
+
         $middleware->trustProxies(at: "*");
 
         $middleware->alias([

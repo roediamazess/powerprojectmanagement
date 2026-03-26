@@ -36,6 +36,7 @@ final class PermissionCatalog
                     ['key' => 'projects.create', 'label' => 'Create'],
                     ['key' => 'projects.update', 'label' => 'Update'],
                     ['key' => 'projects.delete', 'label' => 'Delete'],
+                    ['key' => 'projects.pic_period.reopen', 'label' => 'Reopen PIC Period'],
                 ],
             ],
             [

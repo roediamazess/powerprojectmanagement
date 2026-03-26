@@ -100,15 +100,6 @@ export default function Login({ status, canResetPassword }) {
                         Sign In
                     </button>
                 </div>
-
-                <div className="new-account mt-3">
-                    <p>
-                        Don&apos;t have an account?{' '}
-                        <Link className="text-primary" href={route('register')}>
-                            Sign up
-                        </Link>
-                    </p>
-                </div>
             </form>
         </GuestLayout>
     );
