@@ -4,7 +4,7 @@ import { Head } from '@inertiajs/react';
 
 export default function Index({ root, items = [], cron = {} }) {
   return (
-    <AuthenticatedLayout header="Backups">
+    <>
       <Head title="Backups" />
       <div className="row">
         <div className="col-12 col-lg-8">
@@ -53,6 +53,8 @@ export default function Index({ root, items = [], cron = {} }) {
           </div>
         </div>
       </div>
-    </AuthenticatedLayout>
+    </>
   );
 }
+
+Index.layout = (page) => <AuthenticatedLayout header="Backups">{page}</AuthenticatedLayout>;

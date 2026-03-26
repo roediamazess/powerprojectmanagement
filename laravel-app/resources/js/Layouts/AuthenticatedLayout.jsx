@@ -97,10 +97,22 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const wrapper = document.getElementById('main-wrapper');
+            if (wrapper && !wrapper.classList.contains('show')) {
+                wrapper.classList.add('show');
+            }
+        }
         applySettingsOptions(getInitialOptions());
     }, []);
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const wrapper = document.getElementById('main-wrapper');
+            if (wrapper && !wrapper.classList.contains('show')) {
+                wrapper.classList.add('show');
+            }
+        }
         if (!showSidebarSettings) return;
         const onKeyDown = (e) => {
             if (e.key === 'Escape') setShowSidebarSettings(false);
@@ -639,6 +651,12 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [header]);
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const wrapper = document.getElementById('main-wrapper');
+            if (wrapper && !wrapper.classList.contains('show')) {
+                wrapper.classList.add('show');
+            }
+        }
         if (typeof window === 'undefined') return;
         try {
             const u = new URL(url, window.location.origin);
@@ -650,6 +668,12 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [url]);
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const wrapper = document.getElementById('main-wrapper');
+            if (wrapper && !wrapper.classList.contains('show')) {
+                wrapper.classList.add('show');
+            }
+        }
         if (typeof document === 'undefined') return;
         const tokens = String(pageSearchQuery ?? '')
             .toLowerCase()
@@ -670,6 +694,12 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [pageSearchQuery, url]);
 
     useEffect(() => {
+        if (typeof document !== 'undefined') {
+            const wrapper = document.getElementById('main-wrapper');
+            if (wrapper && !wrapper.classList.contains('show')) {
+                wrapper.classList.add('show');
+            }
+        }
         const initFillow = () => {
             const Fillow = window?.Fillow;
             if (!Fillow?.init) return;
