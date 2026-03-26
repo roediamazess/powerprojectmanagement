@@ -145,5 +145,5 @@ Route::get('/backups-test', [App\Http\Controllers\BackupsController::class, 'ind
 require __DIR__.'/auth.php';
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('/backups', [BackupsController::class, 'index'])->name('backups.index');
+    Route::get('/backups', [App\Http\Controllers\BackupsController::class, 'index'])->name('backups.index');
 });
