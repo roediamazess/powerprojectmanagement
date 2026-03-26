@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\BackupsController;
 use App\Http\Controllers\Tables\UserManagementController;
 use App\Http\Controllers\Tables\PartnersController;
 use App\Http\Controllers\Tables\PartnerSetupController;
@@ -139,3 +140,7 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/backups', [BackupsController::class, 'index'])->name('backups.index');
+});

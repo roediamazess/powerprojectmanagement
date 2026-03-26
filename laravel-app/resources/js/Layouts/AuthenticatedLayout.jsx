@@ -1160,6 +1160,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Link>
                             </li>
                             <li>
+                                <Link href={route('backups.index')} aria-expanded="false">
+                                    <i className="fas fa-cloud-upload-alt" />
+                                    <span className="nav-text">Backups</span>
+                                </Link>
+                            </li>
+                            <li>
                                 <a className="has-arrow" href="#" aria-expanded="false">
                                     <i className="fas fa-clone" />
                                     <span className="nav-text">Pages</span>
