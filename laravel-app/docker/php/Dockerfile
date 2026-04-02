@@ -14,12 +14,11 @@ RUN npm run build
 
 FROM php:8.4-fpm-alpine AS app
 WORKDIR /var/www/html
-RUN apk add --no-cache icu-libs libzip postgresql-libs postgresql-client unzip rclone bash \
+RUN apk add --no-cache icu-libs libzip postgresql-libs postgresql-client unzip bash \
   && apk add --no-cache --virtual .build-deps icu-dev libzip-dev oniguruma-dev postgresql-dev \
   && docker-php-ext-configure intl \
   && docker-php-ext-install -j$(nproc) intl opcache pdo_mysql pdo_pgsql zip \
-  && apk del .build-deps \
-  && mkdir -p /etc/rclone
+  && apk del .build-deps
 COPY . .
 RUN rm -f bootstrap/cache/*.php || true
 COPY --from=composer_deps /app/vendor ./vendor

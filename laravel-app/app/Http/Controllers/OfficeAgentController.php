@@ -24,7 +24,7 @@ class OfficeAgentController extends Controller
 {
     public function index(Request $request): Response
     {
-        return Inertia::location('/agent-working-space/');
+        return Inertia::render('OfficeAgent/Index');
     }
 
     public function uploadSpriteSheet(Request $request): JsonResponse

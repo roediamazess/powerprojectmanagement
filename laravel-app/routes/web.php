@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\BackupsController;
 use App\Http\Controllers\Tables\UserManagementController;
 use App\Http\Controllers\Tables\PartnersController;
 use App\Http\Controllers\Tables\PartnerSetupController;
@@ -28,6 +27,13 @@ Route::get('/', function () {
     }
 
     return redirect()->route('login');
+});
+
+Route::get('/health', function () {
+    return response()->json([
+        'ok' => true,
+        'time' => now()->toISOString(),
+    ]);
 });
 
 Route::get('/dashboard', function () {
@@ -111,6 +117,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/arrangements/schedules/{schedule}', [ArrangementSchedulesController::class, 'update'])->name('arrangements.schedules.update');
         Route::post('/arrangements/schedules/{schedule}/approve', [ArrangementSchedulesController::class, 'approve'])->name('arrangements.schedules.approve');
         Route::post('/arrangements/schedules/{schedule}/reopen', [ArrangementSchedulesController::class, 'reopen'])->name('arrangements.schedules.reopen');
+        Route::delete('/arrangements/schedules/{schedule}', [ArrangementSchedulesController::class, 'destroy'])->name('arrangements.schedules.destroy');
 
         Route::get('/arrangements/batches', [ArrangementBatchesController::class, 'index'])->name('arrangements.batches.index');
         Route::post('/arrangements/batches', [ArrangementBatchesController::class, 'store'])->name('arrangements.batches.store');
@@ -182,9 +189,3 @@ Route::middleware('auth')->group(function () {
 
 
 require __DIR__.'/auth.php';
-
-Route::middleware(['auth'])->group(function () {
-    Route::get('/backups', [App\Http\Controllers\BackupsController::class, 'index'])->name('backups.index');
-    Route::post('/backups/run', [App\Http\Controllers\BackupsController::class, 'run'])->middleware('role:Administrator')->name('backups.run');
-    Route::get('/backups/status/{runId}', [App\Http\Controllers\BackupsController::class, 'status'])->middleware('role:Administrator')->name('backups.status');
-});

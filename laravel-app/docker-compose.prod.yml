@@ -4,14 +4,12 @@ services:
       context: .
       dockerfile: docker/nginx/Dockerfile
     ports:
-      - "127.0.0.1:8080:80"
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
     depends_on:
       - app
     restart: unless-stopped
     volumes:
       - public_build:/var/www/html/public/build:ro
-      - ./public/office-agent/sprites:/var/www/html/public/office-agent/sprites:ro
-      - /home/ubuntu/pixel-agents/dist/webview:/var/www/html/public/office-agent-ui:ro
 
   app:
     build:
@@ -40,16 +38,14 @@ services:
     volumes:
       - storage_data:/var/www/html/storage
       - public_build:/var/www/html/public/build
-      - ./public/office-agent/sprites:/var/www/html/public/office-agent/sprites
-      - /home/ubuntu/pixel-agents/dist/webview:/var/www/html/public/office-agent-ui:ro
-      - ${BACKUP_DIR_HOST:-/opt/power-project-management/.backups/powerpro}:/var/www/html/.backups/powerpro
-      - /home/ubuntu/.config/rclone/rclone.conf:/etc/rclone/rclone.conf:ro
     depends_on:
       - db
     restart: unless-stopped
 
   office_agent_watch:
-    image: laravel-app-app
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
     command: ["php", "artisan", "office-agent:watch", "--interval=900"]
     environment:
       - APP_NAME=${APP_NAME:-Power Project Management}
