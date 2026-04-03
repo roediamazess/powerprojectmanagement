@@ -1,6 +1,13 @@
 <?php
 
+use App\Http\Controllers\BackupsController;
 use App\Http\Controllers\ProfileController;
+
+Route::middleware(['auth', 'verified', 'role:Administrator'])->group(function () {
+    Route::get('/backups', [BackupsController::class, 'index'])->name('backups.index');
+    Route::post('/backups/manual/run', [BackupsController::class, 'run'])->name('backups.manual.run');
+    Route::get('/backups/manual/status/{runId}', [BackupsController::class, 'status'])->name('backups.manual.status');
+});
 use App\Http\Controllers\Tables\UserManagementController;
 use App\Http\Controllers\Tables\PartnersController;
 use App\Http\Controllers\Tables\PartnerSetupController;
