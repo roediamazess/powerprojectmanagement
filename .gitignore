@@ -22,6 +22,11 @@ envato-template
 
 db_dump.sql
 storage_data.tar.gz
+db_dump_*.sql
+storage_data_*.tar.gz
+
+# backup artifacts (never commit)
+laravel-app/backup/
 
 # local build markers
 laravel-app/BUILD_MARKER.txt
@@ -29,3 +34,7 @@ laravel-app/BUILD_MARKER.txt
 # local import files
 Partners.xlsx
 Time Boxing.xlsx
+
+# workspace copies
+power-project-management
+power-project-management/

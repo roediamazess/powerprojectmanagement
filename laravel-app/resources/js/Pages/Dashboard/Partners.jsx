@@ -123,9 +123,9 @@ export default function DashboardPartners({
         };
     }, []);
 
-    const themeBg = currentTheme === 'dark' ? '#312a2a' : '#ffffff';
+    const themeBg = currentTheme === 'dark' ? '#1e1e2d' : '#ffffff';
     const themeText = currentTheme === 'dark' ? '#ffffff' : '#212529';
-    const tableHeaderBg = currentTheme === 'dark' ? '#312a2a' : '#f8f9fa';
+    const tableHeaderBg = currentTheme === 'dark' ? '#2c2c3d' : '#f8f9fa';
 
     const handleDrilldown = async (type, value) => {
         if (!value) return;

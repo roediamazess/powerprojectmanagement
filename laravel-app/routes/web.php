@@ -18,6 +18,7 @@ use App\Http\Controllers\Tables\TimeBoxingSetupController;
 use App\Http\Controllers\Tables\TimeBoxingsController;
 use App\Http\Controllers\Arrangement\ArrangementController;
 use App\Http\Controllers\Arrangement\ArrangementSchedulesController;
+use App\Http\Controllers\Arrangement\ArrangementJobsheetController;
 use App\Http\Controllers\Arrangement\ArrangementBatchesController;
 use App\Http\Controllers\Arrangement\ArrangementPickupsController;
 use App\Http\Controllers\OfficeAgentController;
@@ -115,8 +116,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/partners/{partner}', [PartnersController::class, 'destroy'])->middleware('role_or_permission:Administrator|partners.delete')->name('partners.destroy');
 
     Route::get('/arrangements', [ArrangementController::class, 'index'])->name('arrangements.index');
+    Route::get('/arrangements/jobsheet', [ArrangementJobsheetController::class, 'index'])->name('arrangements.jobsheet');
+    Route::post('/arrangements/jobsheet', [ArrangementJobsheetController::class, 'store'])->name('arrangements.jobsheet.store');
     Route::post('/arrangements/schedules/{schedule}/pickups', [ArrangementPickupsController::class, 'store'])->name('arrangements.pickups.store');
     Route::delete('/arrangements/pickups/{pickup}', [ArrangementPickupsController::class, 'destroy'])->name('arrangements.pickups.destroy');
+    Route::post('/arrangements/pickups/{pickup}/release', [ArrangementPickupsController::class, 'release'])->name('arrangements.pickups.release');
+    Route::post('/arrangements/pickups/{pickup}/reopen', [ArrangementPickupsController::class, 'reopen'])->name('arrangements.pickups.reopen');
 
     Route::middleware('role:Administrator|Admin Officer')->group(function () {
         Route::get('/arrangements/schedules', [ArrangementSchedulesController::class, 'index'])->name('arrangements.schedules.index');
@@ -129,6 +134,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/arrangements/batches', [ArrangementBatchesController::class, 'index'])->name('arrangements.batches.index');
         Route::post('/arrangements/batches', [ArrangementBatchesController::class, 'store'])->name('arrangements.batches.store');
         Route::put('/arrangements/batches/{batch}', [ArrangementBatchesController::class, 'update'])->name('arrangements.batches.update');
+        Route::post('/arrangements/batches/{batch}/approve', [ArrangementBatchesController::class, 'approve'])->name('arrangements.batches.approve');
+        Route::post('/arrangements/batches/{batch}/reopen', [ArrangementBatchesController::class, 'reopen'])->name('arrangements.batches.reopen');
     });
 
     Route::get('/time-boxing', [TimeBoxingsController::class, 'index'])->middleware('role_or_permission:Administrator|time_boxing.view')->name('time-boxing.index');

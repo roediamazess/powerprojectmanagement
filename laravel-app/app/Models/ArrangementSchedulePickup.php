@@ -17,10 +17,12 @@ class ArrangementSchedulePickup extends Model
         'schedule_id',
         'user_id',
         'points',
+        'status',
     ];
 
     protected $casts = [
         'points' => 'integer',
+        'status' => 'string',
     ];
 
     public function schedule(): BelongsTo
@@ -42,4 +44,3 @@ class ArrangementSchedulePickup extends Model
         });
     }
 }
-

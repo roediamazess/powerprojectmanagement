@@ -42,6 +42,9 @@ class ArrangementTest extends TestCase
         $batch = ArrangementBatch::query()->create([
             'name' => 'Batch A',
             'requirement_points' => 2,
+            'min_requirement_points' => 0,
+            'max_requirement_points' => 2,
+            'status' => 'Approved',
             'created_by' => 1,
         ]);
 
@@ -51,14 +54,15 @@ class ArrangementTest extends TestCase
             'start_date' => '2026-04-01',
             'end_date' => '2026-04-05',
             'count' => 1,
-            'status' => 'Publish',
+            'status' => 'Batched',
             'created_by' => 1,
         ]);
 
         $tier3 = User::factory()->create(['tier' => 'Tier 3']);
         $this->actingAs($tier3)
             ->post("/arrangements/schedules/{$schedule->id}/pickups")
-            ->assertStatus(422);
+            ->assertStatus(302)
+            ->assertSessionHasErrors();
 
         $tier1 = User::factory()->create(['tier' => 'Tier 1']);
         $this->actingAs($tier1)
@@ -74,7 +78,8 @@ class ArrangementTest extends TestCase
         $tier2 = User::factory()->create(['tier' => 'Tier 2']);
         $this->actingAs($tier2)
             ->post("/arrangements/schedules/{$schedule->id}/pickups")
-            ->assertStatus(422);
+            ->assertStatus(302)
+            ->assertSessionHasErrors();
 
         $pickup = ArrangementSchedulePickup::query()->where('schedule_id', $schedule->id)->where('user_id', $tier1->id)->firstOrFail();
 
@@ -123,5 +128,161 @@ class ArrangementTest extends TestCase
             ->whereDate('end_date', '2026-04-05')
             ->where('count', 1)
             ->count());
+    }
+
+    public function test_batch_approve_locks_updates_until_reopen(): void
+    {
+        $admin = User::factory()->create();
+        $adminRole = Role::query()->firstOrCreate(['name' => 'Administrator', 'guard_name' => 'web']);
+        $admin->syncRoles([$adminRole]);
+
+        $batch = ArrangementBatch::query()->create([
+            'name' => 'Batch Lock',
+            'requirement_points' => 10,
+            'min_requirement_points' => 3,
+            'max_requirement_points' => 10,
+            'status' => 'Open',
+            'pickup_start_at' => now()->subDay(),
+            'pickup_end_at' => now()->addDay(),
+            'created_by' => $admin->id,
+        ]);
+
+        $this->actingAs($admin)
+            ->post("/arrangements/batches/{$batch->id}/approve")
+            ->assertStatus(302);
+
+        $this->actingAs($admin)
+            ->put("/arrangements/batches/{$batch->id}", [
+                'name' => 'Batch Lock Updated',
+                'min_requirement_points' => 1,
+                'max_requirement_points' => 10,
+                'pickup_start_at' => now('Asia/Jakarta')->format('Y-m-d\\TH:i'),
+                'pickup_end_at' => now('Asia/Jakarta')->addDay()->format('Y-m-d\\TH:i'),
+                'schedule_ids' => [],
+            ])
+            ->assertStatus(302)
+            ->assertSessionHasErrors();
+
+        $this->actingAs($admin)
+            ->post("/arrangements/batches/{$batch->id}/reopen")
+            ->assertStatus(302);
+
+        $this->actingAs($admin)
+            ->put("/arrangements/batches/{$batch->id}", [
+                'name' => 'Batch Lock Updated',
+                'min_requirement_points' => 1,
+                'max_requirement_points' => 10,
+                'pickup_start_at' => now('Asia/Jakarta')->format('Y-m-d\\TH:i'),
+                'pickup_end_at' => now('Asia/Jakarta')->addDay()->format('Y-m-d\\TH:i'),
+                'schedule_ids' => [],
+            ])
+            ->assertStatus(302);
+    }
+
+    public function test_pickup_can_release_and_reopen_and_cancel_pickup_rules(): void
+    {
+        $batch = ArrangementBatch::query()->create([
+            'name' => 'Batch Pickup Flow',
+            'requirement_points' => 2,
+            'min_requirement_points' => 0,
+            'max_requirement_points' => 2,
+            'status' => 'Approved',
+            'pickup_start_at' => now()->subHour(),
+            'pickup_end_at' => now()->addHour(),
+            'created_by' => 1,
+        ]);
+
+        $schedule = ArrangementSchedule::query()->create([
+            'batch_id' => $batch->id,
+            'schedule_type' => 'Middle',
+            'start_date' => '2026-04-01',
+            'end_date' => '2026-04-05',
+            'count' => 1,
+            'status' => 'Batched',
+            'created_by' => 1,
+        ]);
+
+        $tier1 = User::factory()->create(['tier' => 'Tier 1']);
+
+        $this->actingAs($tier1)
+            ->post("/arrangements/schedules/{$schedule->id}/pickups")
+            ->assertStatus(302);
+
+        $pickup = ArrangementSchedulePickup::query()
+            ->where('schedule_id', $schedule->id)
+            ->where('user_id', $tier1->id)
+            ->firstOrFail();
+
+        $this->actingAs($tier1)
+            ->post("/arrangements/pickups/{$pickup->id}/release")
+            ->assertStatus(302);
+
+        $this->assertDatabaseHas('arrangement_schedule_pickups', [
+            'id' => $pickup->id,
+            'status' => 'Released',
+        ]);
+
+        $this->actingAs($tier1)
+            ->delete("/arrangements/pickups/{$pickup->id}")
+            ->assertStatus(302)
+            ->assertSessionHasErrors();
+
+        $this->actingAs($tier1)
+            ->post("/arrangements/pickups/{$pickup->id}/reopen")
+            ->assertStatus(302);
+
+        $this->assertDatabaseHas('arrangement_schedule_pickups', [
+            'id' => $pickup->id,
+            'status' => 'Picked',
+        ]);
+
+        $this->actingAs($tier1)
+            ->delete("/arrangements/pickups/{$pickup->id}")
+            ->assertStatus(302);
+    }
+
+    public function test_pickup_cannot_overlap_date_range_with_existing_pickup(): void
+    {
+        $batch = ArrangementBatch::query()->create([
+            'name' => 'Batch Overlap',
+            'requirement_points' => 10,
+            'min_requirement_points' => 0,
+            'max_requirement_points' => 10,
+            'status' => 'Approved',
+            'pickup_start_at' => now()->subHour(),
+            'pickup_end_at' => now()->addHour(),
+            'created_by' => 1,
+        ]);
+
+        $s1 = ArrangementSchedule::query()->create([
+            'batch_id' => $batch->id,
+            'schedule_type' => 'Middle',
+            'start_date' => '2026-04-06',
+            'end_date' => '2026-04-08',
+            'count' => 1,
+            'status' => 'Batched',
+            'created_by' => 1,
+        ]);
+
+        $s2 = ArrangementSchedule::query()->create([
+            'batch_id' => $batch->id,
+            'schedule_type' => 'Duty',
+            'start_date' => '2026-04-08',
+            'end_date' => '2026-04-10',
+            'count' => 1,
+            'status' => 'Batched',
+            'created_by' => 1,
+        ]);
+
+        $user = User::factory()->create(['tier' => 'Tier 1']);
+
+        $this->actingAs($user)
+            ->post("/arrangements/schedules/{$s1->id}/pickups")
+            ->assertStatus(302);
+
+        $this->actingAs($user)
+            ->post("/arrangements/schedules/{$s2->id}/pickups")
+            ->assertStatus(302)
+            ->assertSessionHasErrors();
     }
 }

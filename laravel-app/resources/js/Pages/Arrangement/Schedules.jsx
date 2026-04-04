@@ -8,7 +8,9 @@ import ArrangementTabs from './Partials/ArrangementTabs';
 export default function Schedules({ schedules, batches, scheduleTypes, statusOptions }) {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const { data, setData, post, put, processing, clearErrors } = useForm({
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletingSchedule, setDeletingSchedule] = useState(null);
+    const { data, setData, post, put, delete: destroy, processing, clearErrors } = useForm({
         batch_id: '',
         schedule_type: scheduleTypes?.[0] ?? 'Middle',
         note: '',
@@ -81,6 +83,43 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
         post(route('arrangements.schedules.reopen', { schedule: id }, false), { preserveScroll: true });
     };
 
+    const openDelete = (s) => {
+        setDeletingSchedule(s);
+        setShowDeleteModal(true);
+    };
+
+    const closeDelete = () => {
+        if (processing) return;
+        setShowDeleteModal(false);
+        setDeletingSchedule(null);
+    };
+
+    const confirmDelete = () => {
+        if (!deletingSchedule?.id) return;
+        destroy(route('arrangements.schedules.destroy', { schedule: deletingSchedule.id }, false), {
+            preserveScroll: true,
+            onFinish: () => {
+                setShowDeleteModal(false);
+                setDeletingSchedule(null);
+            },
+        });
+    };
+
+    const getStatusVariant = (status) => {
+        switch (status) {
+            case 'Open':
+                return 'bg-primary';
+            case 'Batched':
+                return 'bg-info';
+            case 'Picked Up':
+                return 'bg-warning';
+            case 'Approved':
+                return 'bg-success';
+            default:
+                return 'bg-secondary';
+        }
+    };
+
     return (
         <AuthenticatedLayout header={<h2 className="text-xl font-semibold leading-tight text-gray-800">Arrangement — Schedules</h2>}>
             <Head title="Arrangement Schedules" />
@@ -88,16 +127,16 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
             <div className="row">
                 <div className="col-12">
                     <div className="card">
-                        <div className="card-body py-2">
-                            <ArrangementTabs isManager />
-                        </div>
-                    </div>
-                    <div className="card">
-                        <div className="card-header d-flex align-items-center justify-content-between">
-                            <h4 className="card-title mb-0">Schedules</h4>
-                            <button type="button" className="btn btn-primary" onClick={openNew}>
-                                New
-                            </button>
+                        <div className="card-header d-flex flex-wrap align-items-center justify-content-between pb-2">
+                            <div className="d-flex align-items-center flex-grow-1">
+                                <ArrangementTabs isManager />
+                            </div>
+                            <div className="d-flex align-items-center gap-3">
+                                <h4 className="card-title mb-0 d-none d-sm-block">Schedules</h4>
+                                <button type="button" className="btn btn-primary" onClick={openNew}>
+                                    New
+                                </button>
+                            </div>
                         </div>
                         <div className="card-body">
                             <div className="table-responsive">
@@ -126,19 +165,34 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
                                                 <td>{s.count}</td>
                                                 <td>{s.pickups_count ?? 0}</td>
                                                 <td>{s.batch ? `${s.batch.name} (${s.batch.requirement_points})` : '-'}</td>
-                                                <td>{s.status}</td>
+                                                <td>
+                                                   <span className={`badge ${getStatusVariant(s.status)}`}>{s.status}</span>
+                                                </td>
                                                 <td className="text-end">
                                                     <div className="d-flex gap-2 justify-content-end">
-                                                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(s)}>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-primary"
+                                                            onClick={() => openEdit(s)}
+                                                            disabled={processing || s.status !== 'Open'}
+                                                        >
                                                             Edit
                                                         </button>
                                                         <button
                                                             type="button"
                                                             className="btn btn-sm btn-outline-success"
                                                             onClick={() => approve(s.id)}
-                                                            disabled={processing || s.status !== 'Publish'}
+                                                            disabled={processing || s.status !== 'Picked Up'}
                                                         >
                                                             Approve
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger"
+                                                            onClick={() => openDelete(s)}
+                                                            disabled={processing || s.status !== 'Open'}
+                                                        >
+                                                            Delete
                                                         </button>
                                                         <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => reopen(s.id)} disabled={processing}>
                                                             Reopen
@@ -179,13 +233,14 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label">Batch</label>
-                                                <select className="form-select" value={data.batch_id} onChange={(e) => setData('batch_id', e.target.value)}>
+                                                <select className="form-select" value={data.batch_id} disabled>
                                                     {batchOptions.map((b) => (
                                                         <option key={b.id} value={b.id}>
                                                             {b.name}
                                                         </option>
                                                     ))}
                                                 </select>
+                                                <small className="text-muted d-block mt-1">Batch diisi otomatis saat proses batching.</small>
                                             </div>
                                             <div className="col-md-6">
                                                 <label className="form-label">Start Date</label>
@@ -209,7 +264,7 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
                                             </div>
                                             <div className="col-md-4">
                                                 <label className="form-label">Status</label>
-                                                <select className="form-select" value={data.status} onChange={(e) => setData('status', e.target.value)}>
+                                                <select className="form-select" value={data.status} disabled>
                                                     {(statusOptions ?? []).map((t) => (
                                                         <option key={t} value={t}>
                                                             {t}
@@ -224,11 +279,11 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
                                         </div>
                                     </div>
                                     <div className="modal-footer">
+                                        <button type="submit" className="btn btn-primary" disabled={processing}>
+                                            {editingId ? 'Update' : 'Save'}
+                                        </button>
                                         <button type="button" className="btn btn-outline-secondary" onClick={closeModal}>
                                             Cancel
-                                        </button>
-                                        <button type="submit" className="btn btn-primary" disabled={processing}>
-                                            Save
                                         </button>
                                     </div>
                                 </form>
@@ -236,6 +291,48 @@ export default function Schedules({ schedules, batches, scheduleTypes, statusOpt
                         </div>
                     </div>
                     <div className="modal-backdrop fade show" onClick={closeModal} />
+                </>
+            ) : null}
+
+            {showDeleteModal ? (
+                <>
+                    <div className="modal fade show" style={{ display: 'block' }} role="dialog" aria-modal="true">
+                        <div className="modal-dialog modal-dialog-centered" role="document">
+                            <div className="modal-content border-0 shadow-lg overflow-hidden">
+                                <div
+                                    className="modal-header text-white"
+                                    style={{ background: 'linear-gradient(90deg, var(--danger) 0%, var(--primary) 65%, var(--danger) 100%)' }}
+                                >
+                                    <div>
+                                        <h5 className="modal-title mb-0">Delete Schedule</h5>
+                                        <small style={{ opacity: 0.9 }}>Tindakan ini tidak bisa dibatalkan.</small>
+                                    </div>
+                                    <button type="button" className="btn-close btn-close-white" onClick={closeDelete} disabled={processing} />
+                                </div>
+                                <div className="modal-body" style={{ background: 'var(--body-bg)' }}>
+                                    <div className="mb-2">
+                                        <div className="fw-semibold">{deletingSchedule?.schedule_type ?? '-'}</div>
+                                        <div className="text-muted">
+                                            {deletingSchedule?.start_date ? formatDateDdMmmYy(deletingSchedule.start_date) : '-'} –{' '}
+                                            {deletingSchedule?.end_date ? formatDateDdMmmYy(deletingSchedule.end_date) : '-'}
+                                        </div>
+                                    </div>
+                                    <div className="alert alert-warning mb-0">
+                                        Apakah Anda yakin ingin menghapus schedule ini?
+                                    </div>
+                                </div>
+                                <div className="modal-footer" style={{ background: 'var(--card)' }}>
+                                    <button type="button" className="btn btn-danger" onClick={confirmDelete} disabled={processing}>
+                                        Delete
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary" onClick={closeDelete} disabled={processing}>
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="modal-backdrop fade show" onClick={closeDelete} />
                 </>
             ) : null}
         </AuthenticatedLayout>

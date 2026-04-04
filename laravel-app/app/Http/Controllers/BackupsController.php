@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\Process\Process;
+use App\Models\AuditLog;
 
 class BackupsController extends Controller
 {
@@ -41,11 +43,9 @@ class BackupsController extends Controller
 
     public function index()
     {
-        $base = base_path('.backups/powerpro');
-        $root = env('BACKUP_DIR', $base);
+        $root = env('BACKUP_DIR') ?: storage_path('backup/manual');
         $dbDir = $root.'/db';
         $filesDir = $root.'/files';
-        $metaDir = $root.'/meta';
 
         $list = [];
         foreach ([['dir'=>$dbDir,'type'=>'db','ext'=>'.sql.gz'],['dir'=>$filesDir,'type'=>'files','ext'=>'.tar.gz']] as $spec) {
@@ -65,28 +65,28 @@ class BackupsController extends Controller
         usort($list, function($a,$b){return strcmp($b['mtime'],$a['mtime']);});
         $latest = array_slice($list, 0, 50);
 
-        $cronDaily = '10 2 * * * cd '.base_path().' && DO_UPLOAD=1 RCLONE_REMOTE=gdrive RCLONE_PATH=powerpro /usr/bin/env bash '.base_path('laravel-app/backup.sh').' all >> '.$root.'/backup.log 2>&1';
-        $cronWeekly = '10 3 * * 0 cd '.base_path().' && DO_UPLOAD=1 RCLONE_REMOTE=gdrive RCLONE_PATH=powerpro RETENTION_DAYS_DB=60 RETENTION_DAYS_FILES=60 /usr/bin/env bash '.base_path('laravel-app/backup.sh').' all >> '.$root.'/backup.log 2>&1';
-
         return Inertia::render('Backups/Index', [
             'root' => $root,
             'items' => $latest,
-            'cron' => [
-                'daily' => $cronDaily,
-                'weekly' => $cronWeekly,
-            ],
         ]);
     }
 
     public function run(Request $request)
     {
-        $root = env('BACKUP_DIR', base_path('.backups/powerpro'));
+        $root = env('BACKUP_DIR') ?: storage_path('backup/manual');
         $remote = env('RCLONE_REMOTE', 'gdrive');
-        $path = env('RCLONE_PATH', 'powerpro');
+        $path = env('RCLONE_PATH', 'powerpro/manual_backups');
 
         $metaDir = rtrim($root, '/').'/meta';
         if (!is_dir($metaDir)) {
-            @mkdir($metaDir, 0775, true);
+            mkdir($metaDir, 0775, true);
+        }
+        if (!is_dir($metaDir) || !is_writable($metaDir)) {
+            return response()->json([
+                'runId' => null,
+                'alreadyRunning' => false,
+                'error' => 'Server tidak bisa menulis ke folder backup (permission).',
+            ], 500);
         }
 
         $lockDir = rtrim($root, '/').'/.manual_backup_lock';
@@ -117,7 +117,7 @@ class BackupsController extends Controller
 
             if (is_dir($lockDir)) {
                 $age = time() - (int) @filemtime($lockDir);
-                if ($age > 6 * 60 * 60) {
+                if ($age > 60 * 60) {
                     @unlink($lockDir.'/run_id');
                     @rmdir($lockDir);
                     $existingRunId = '';
@@ -133,9 +133,24 @@ class BackupsController extends Controller
             }
         }
 
-        $runId = gmdate('Ymd\THis\Z').'-'.bin2hex(random_bytes(4));
+        $runId = gmdate('Ymd\THis\Z').'-'.Str::lower(Str::random(8));
         $statusFile = rtrim($metaDir, '/')."/manual_status_{$runId}.txt";
-        @file_put_contents($statusFile, "progress=1\nmessage=Menjalankan proses backup...\ndone=0\nerror=\n");
+        $written = file_put_contents($statusFile, "progress=1\nmessage=Menjalankan proses backup...\ndone=0\nerror=\n");
+        if ($written === false) {
+            return response()->json([
+                'runId' => null,
+                'alreadyRunning' => false,
+                'error' => 'Server tidak bisa membuat file status backup (permission).',
+            ], 500);
+        }
+
+        AuditLog::record($request, 'backups.manual.run', 'backups', $runId, [], [], [
+            'backup_dir' => $root,
+            'rclone' => [
+                'remote' => $remote,
+                'path' => $path,
+            ],
+        ]);
 
         $script = <<<'BASH'
 set -euo pipefail
@@ -157,7 +172,7 @@ fail_status() {
   printf "progress=100\nmessage=%s\ndone=1\nerror=%s\n" "Backup gagal" "${msg}" > "${status_file}"
 }
 
-trap 'fail_status "Terjadi error saat proses backup"; exit 1' ERR
+trap 'cmd="${BASH_COMMAND%% *}"; fail_status "Terjadi error saat proses backup (${cmd})"; exit 1' ERR
 
 cfg_src="${RCLONE_CONFIG_FILE:-/etc/rclone/rclone.conf}"
 cfg="/tmp/rclone_${run_id}.conf"
@@ -193,11 +208,21 @@ update_status 5 "Memulai backup"
 
 export PGPASSWORD="${DB_PASSWORD:-}"
 update_status 20 "Backup database"
-pg_dump -h "${DB_HOST:-db}" -p "${DB_PORT:-5432}" -U "${DB_USERNAME:-app}" "${DB_DATABASE:-app}" \
-  | gzip -c > "${db_dir}/db_${ts}.sql.gz"
+if ! pg_dump -h "${DB_HOST:-db}" -p "${DB_PORT:-5432}" -U "${DB_USERNAME:-app}" "${DB_DATABASE:-app}" \
+  | gzip -c > "${db_dir}/db_${ts}.sql.gz"; then
+  fail_status "Backup database gagal"
+  exit 1
+fi
 
 update_status 55 "Backup storage"
-tar -C /var/www/html -czf "${files_dir}/storage_${ts}.tar.gz" storage/app
+set +e
+tar -C /var/www/html -czf "${files_dir}/storage_${ts}.tar.gz" storage/app >> "${log}" 2>&1
+rc=$?
+set -e
+if [ "${rc}" -gt 1 ]; then
+  fail_status "Backup storage gagal. Cek backup.log untuk detail."
+  exit 1
+fi
 
 branding_files=()
 for f in public/favicon.png public/favicon.ico public/images/power-pro-logo-plain.png public/images/power-pro-logo.png; do
@@ -205,7 +230,14 @@ for f in public/favicon.png public/favicon.ico public/images/power-pro-logo-plai
 done
 if [ "${#branding_files[@]}" -gt 0 ]; then
   update_status 70 "Backup branding"
-  tar -C /var/www/html -czf "${files_dir}/public_branding_${ts}.tar.gz" "${branding_files[@]}"
+  set +e
+  tar -C /var/www/html -czf "${files_dir}/public_branding_${ts}.tar.gz" "${branding_files[@]}" >> "${log}" 2>&1
+  rc=$?
+  set -e
+  if [ "${rc}" -gt 1 ]; then
+    fail_status "Backup branding gagal. Cek backup.log untuk detail."
+    exit 1
+  fi
 fi
 
 update_status 80 "Membersihkan backup lama"
@@ -216,15 +248,50 @@ find "${meta_dir}" -type f -name 'sha256_*' -mtime +"${retention_files}" -delete
 
 dest="${remote}:${path}"
 echo "Sync ke ${dest} ..." >> "${log}"
-update_status 90 "Sync ke Google Drive"
-if ! rclone sync -P "${backup_root}" "${dest}" --create-empty-src-dirs \
-  --exclude "backup.log" \
-  --exclude ".manual_backup_lock/**" \
-  --exclude "meta/manual_status_*" \
+sha_db="${meta_dir}/sha256_db_${ts}.txt"
+sha_files="${meta_dir}/sha256_files_${ts}.txt"
+sha_branding=""
+
+echo "$(sha256sum "${db_dir}/db_${ts}.sql.gz" | awk '{print $1}')" > "${sha_db}"
+echo "$(sha256sum "${files_dir}/storage_${ts}.tar.gz" | awk '{print $1}')" > "${sha_files}"
+
+if [ -f "${files_dir}/public_branding_${ts}.tar.gz" ]; then
+  sha_branding="${meta_dir}/sha256_branding_${ts}.txt"
+  echo "$(sha256sum "${files_dir}/public_branding_${ts}.tar.gz" | awk '{print $1}')" > "${sha_branding}"
+fi
+
+update_status 85 "Membuat bundle"
+bundle="${meta_dir}/powerpro_manual_bundle_${ts}.tar.gz"
+bundle_items=(
+  "db/db_${ts}.sql.gz"
+  "files/storage_${ts}.tar.gz"
+  "meta/sha256_db_${ts}.txt"
+  "meta/sha256_files_${ts}.txt"
+)
+if [ -f "${files_dir}/public_branding_${ts}.tar.gz" ]; then
+  bundle_items+=("files/public_branding_${ts}.tar.gz")
+fi
+if [ -n "${sha_branding}" ]; then
+  bundle_items+=("meta/sha256_branding_${ts}.txt")
+fi
+tar -C "${backup_root}" -czf "${bundle}" "${bundle_items[@]}" >> "${log}" 2>&1
+
+update_status 92 "Upload ke Google Drive"
+remote_bundle="${dest}/bundles/powerpro_manual_bundle_${ts}.tar.gz"
+echo "Upload bundle ke ${remote_bundle} ..." >> "${log}"
+if ! rclone copyto "${bundle}" "${remote_bundle}" \
+  --drive-chunk-size 64M \
+  --transfers 4 \
+  --checkers 8 \
+  --retries 3 \
+  --stats-one-line --stats 30s \
   >> "${log}" 2>&1; then
-  fail_status "Sync ke Google Drive gagal (rclone)"
+  fail_status "Upload ke Google Drive gagal (rclone)"
   exit 1
 fi
+
+update_status 96 "Finalisasi"
+find "${meta_dir}" -type f -name 'powerpro_manual_bundle_*.tar.gz' -mtime +"${retention_files}" -delete 2>/dev/null || true
 
 echo "=== manual backup done ${ts} ===" >> "${log}"
 printf "progress=100\nmessage=Backup selesai\ndone=1\nerror=\n" > "${status_file}"
@@ -259,7 +326,7 @@ BASH;
         $process->setOptions(['create_new_console' => true]);
         try {
             $process->start();
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             @file_put_contents($statusFile, "progress=100\nmessage=Backup gagal\ndone=1\nerror=Gagal menjalankan proses backup\n");
             return response()->json([
                 'runId' => $runId,
@@ -275,11 +342,32 @@ BASH;
         return response()->json($payload);
     }
 
-    public function status(Request $request, string $runId)
+    public function status(string $runId)
     {
-        $root = env('BACKUP_DIR', base_path('.backups/powerpro'));
+        $root = env('BACKUP_DIR') ?: storage_path('backup/manual');
         $statusFile = rtrim($root, '/')."/meta/manual_status_{$runId}.txt";
-        $content = is_file($statusFile) ? File::get($statusFile) : null;
+        if (!is_file($statusFile)) {
+            $lockDir = rtrim($root, '/').'/.manual_backup_lock';
+            $lockRunId = is_dir($lockDir) ? @trim((string) @file_get_contents($lockDir.'/run_id')) : '';
+            if ($lockRunId === $runId) {
+                return response()->json([
+                    'runId' => $runId,
+                    'progress' => 5,
+                    'done' => false,
+                    'message' => 'Backup sedang dimulai...',
+                    'error' => '',
+                ]);
+            }
+            return response()->json([
+                'runId' => $runId,
+                'progress' => 100,
+                'done' => true,
+                'message' => 'Backup gagal',
+                'error' => 'Status backup tidak ditemukan (permission atau runner gagal). Silakan klik Backup lagi.',
+            ]);
+        }
+
+        $content = File::get($statusFile);
         $parsed = $this->parseStatusFile($content);
 
         $lockDir = rtrim($root, '/').'/.manual_backup_lock';
@@ -299,6 +387,23 @@ BASH;
                 'done' => true,
                 'message' => 'Backup gagal',
                 'error' => 'Backup tidak berjalan (runner gagal atau lock stale). Silakan klik Backup lagi.',
+            ];
+        }
+
+        if (
+            (int) ($parsed['progress'] ?? 0) >= 80
+            && !(bool) ($parsed['done'] ?? false)
+            && $age !== null
+            && $age > 15 * 60
+            && $lockRunId === $runId
+        ) {
+            @unlink($lockDir.'/run_id');
+            @rmdir($lockDir);
+            $parsed = [
+                'progress' => 100,
+                'done' => true,
+                'message' => 'Backup gagal',
+                'error' => 'Proses backup berhenti sebelum selesai. Silakan klik Backup lagi.',
             ];
         }
 

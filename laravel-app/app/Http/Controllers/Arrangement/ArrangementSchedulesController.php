@@ -31,7 +31,7 @@ class ArrangementSchedulesController extends Controller
             'schedules' => $schedules,
             'batches' => $batches,
             'scheduleTypes' => ['Middle', 'Duty', 'Saturday', 'Sunday', 'Public Holiday'],
-            'statusOptions' => ['Open', 'Publish', 'Approved'],
+            'statusOptions' => ['Open', 'Batched', 'Picked Up', 'Approved'],
         ]);
     }
 
@@ -45,13 +45,13 @@ class ArrangementSchedulesController extends Controller
         DB::transaction(function () use ($data, $request, $duplicateCount) {
             for ($i = 0; $i < $duplicateCount; $i++) {
                 ArrangementSchedule::query()->create([
-                    'batch_id' => $data['batch_id'] ?? null,
+                    'batch_id' => null,
                     'schedule_type' => $data['schedule_type'],
                     'note' => $data['note'] ?? null,
                     'start_date' => $data['start_date'],
                     'end_date' => $data['end_date'],
                     'count' => 1,
-                    'status' => $data['status'],
+                    'status' => 'Open',
                     'created_by' => $request->user()->id,
                 ]);
             }
@@ -62,34 +62,38 @@ class ArrangementSchedulesController extends Controller
 
     public function update(Request $request, ArrangementSchedule $schedule): RedirectResponse
     {
-        $data = $this->validated($request, $schedule);
-
-        if ($schedule->status === 'Approved' && ! $request->user()->hasAnyRole(['Administrator', 'Admin Officer'])) {
-            abort(403);
+        if (! in_array($schedule->status, ['Open', 'Publish']) && ! $request->user()->hasAnyRole(['Administrator', 'Admin Officer'])) {
+            abort(403, 'Hanya status Open yang dapat diubah.');
         }
 
+        $data = $this->validated($request, $schedule);
+
         $schedule->forceFill([
-            'batch_id' => $data['batch_id'] ?? null,
             'schedule_type' => $data['schedule_type'],
             'note' => $data['note'] ?? null,
             'start_date' => $data['start_date'],
             'end_date' => $data['end_date'],
-            'count' => 1,
-            'status' => $data['status'],
         ]);
-
-        if ($data['status'] !== 'Approved') {
-            $schedule->forceFill(['approved_by' => null, 'approved_at' => null]);
-        }
 
         $schedule->save();
 
         return back();
     }
 
+    public function destroy(Request $request, ArrangementSchedule $schedule): RedirectResponse
+    {
+        if (! in_array($schedule->status, ['Open', 'Publish']) && ! $request->user()->hasAnyRole(['Administrator', 'Admin Officer'])) {
+            abort(403, 'Hanya status Open yang dapat dihapus.');
+        }
+
+        $schedule->delete();
+
+        return back();
+    }
+
     public function approve(Request $request, ArrangementSchedule $schedule): RedirectResponse
     {
-        if ($schedule->status !== 'Publish') {
+        if ($schedule->status !== 'Picked Up') {
             abort(422);
         }
 
@@ -126,7 +130,7 @@ class ArrangementSchedulesController extends Controller
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'count' => ['required', 'integer', 'min:1', 'max:20'],
-            'status' => ['required', 'string', Rule::in(['Open', 'Publish', 'Approved'])],
+            'status' => ['nullable', 'string', Rule::in(['Open', 'Batched', 'Picked Up', 'Approved', 'Publish'])],
         ]);
     }
 }

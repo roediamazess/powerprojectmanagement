@@ -1,0 +1,11 @@
+Table relasi utama:
+- users (id, name, email, tenant_id, ...)
+- tenants (id, name, ...)
+- partners (id, cnc_id, name, tenant_id, ...)
+- projects (id, cnc_id, project_name, tenant_id, ...)
+- time_boxings (id, no, user_id, status, tenant_id, ...)
+- audit_logs (id, user_id, auditable_type, auditable_id, event, old_values, new_values, ...)
+
+Multi-tenancy: Setiap query wajib menyertakan filter `tenant_id`.
+Roles & Permissions: Menggunakan Spatie (roles, permissions, model_has_roles).
+Audit Logging: Setiap aksi create/update/delete wajib dicatat di tabel audit_logs.

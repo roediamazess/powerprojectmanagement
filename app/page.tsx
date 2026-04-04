@@ -1737,7 +1737,7 @@ export default function Home() {
         <div className="footer">
             <div className="copyright text-center">
                 <p className="mb-0">© 2026 — Where Insights Drive Action</p>
-                <p className="mb-0">v1.2603.1</p>
+                <p className="mb-0">v1.2603.7</p>
             </div>
         </div>
         

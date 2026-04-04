@@ -13,29 +13,6 @@ const statusBadgeClass = {
     Completed: 'bg-success',
 };
 
-const statusRowClass = {
-    'Brain Dump': 'table-secondary',
-    'Priority List': 'table-warning',
-    'Ready Plan': 'table-warning',
-    'Time Boxing': 'table-info',
-    Completed: 'table-success',
-};
-
-const statusRowCssClass = {
-    'Brain Dump': 'row-brain-dump',
-    'Priority List': 'row-priority-list',
-    'Ready Plan': 'row-priority-list',
-    'Time Boxing': 'row-time-boxing',
-    Completed: 'row-completed',
-};
-const statusRowInlineStyle = {
-    'Brain Dump': { backgroundColor: 'var(--tb-brain-dump-bg, #d9d9d9)' },
-    'Priority List': { backgroundColor: 'var(--tb-priority-list-bg, #ffe082)' },
-    'Ready Plan': { backgroundColor: 'var(--tb-priority-list-bg, #ffe082)' },
-    'Time Boxing': { backgroundColor: 'var(--tb-time-boxing-bg, #bbdefb)' },
-    Completed: { backgroundColor: 'var(--tb-completed-bg, #c8e6c9)' },
-};
-
 const priorityBadgeClass = {
     Normal: 'bg-secondary',
     High: 'bg-warning',
@@ -682,35 +659,8 @@ export default function TimeBoxingIndex({ items, filters, typeOptions, priorityO
                                 </div>
                             </div>
 
-                            <style>{`
-                                :root {
-                                    --tb-brain-dump-bg: #d9d9d9;
-                                    --tb-priority-list-bg: #ffe082;
-                                    --tb-time-boxing-bg: #bbdefb;
-                                    --tb-completed-bg: #c8e6c9;
-                                    --tb-text-color: inherit;
-                                    --tb-muted-color: rgba(0,0,0,0.6);
-                                }
-                                [data-theme-version="dark"] {
-                                    --tb-brain-dump-bg: #2c2c2c;
-                                    --tb-priority-list-bg: #4c3e1e;
-                                    --tb-time-boxing-bg: #1e3a5f;
-                                    --tb-completed-bg: #1e3f20;
-                                    --tb-text-color: #ffffff;
-                                    --tb-muted-color: rgba(255,255,255,0.7);
-                                }
-                                .table.timeboxing-status tbody tr td { color: var(--tb-text-color) !important; }
-                                .table.timeboxing-status tbody tr td .text-muted { color: var(--tb-muted-color) !important; }
-                                .table.timeboxing-status tbody tr.row-brain-dump td { background-color: var(--tb-brain-dump-bg) !important; }
-                                .table.timeboxing-status tbody tr.row-priority-list td { background-color: var(--tb-priority-list-bg) !important; }
-                                .table.timeboxing-status tbody tr.row-time-boxing td { background-color: var(--tb-time-boxing-bg) !important; }
-                                .table.timeboxing-status tbody tr.row-completed td { background-color: var(--tb-completed-bg) !important; }
-                                .table.timeboxing-status .status-badge-priority { color: #fff !important; }
-                                .table.timeboxing-status span.badge.bg-warning.status-badge-priority { color: #fff !important; }
-                                .table.timeboxing-status tbody tr td a { color: var(--tb-text-color) !important; }
-                            `}</style>
                             <div className="table-responsive">
-                                <table className="table table-responsive-md timeboxing-status">
+                                <table className="table table-hover table-striped table-responsive-md align-middle">
                                     <thead>
                                         <tr>
                                             <th style={{ width: 80 }}>
@@ -751,32 +701,28 @@ export default function TimeBoxingIndex({ items, filters, typeOptions, priorityO
                                                     {sortLabel('Due Date', 'due_date')}
                                                 </button>
                                             </th>
-                                            <th style={{ width: 180 }} />
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {clientFilteredRows.length === 0 ? (
                                             <tr>
-                                                <td colSpan={11} className="text-center text-muted">
+                                                <td colSpan={10} className="text-center text-muted">
                                                     No time boxing found
                                                 </td>
                                             </tr>
                                         ) : null}
 
                                         {clientFilteredRows.map((t) => {
-                                            const rowStyle = statusRowInlineStyle[t.status] ?? undefined;
-                                            const rowClass = statusRowClass[t.status] ?? '';
-                                            const cssClass = statusRowCssClass[t.status] ?? '';
                                             return (
-                                            <tr key={t.id} className={`${rowClass} ${cssClass}`}>
-                                                <td title={t.id} style={rowStyle}>{t.no}</td>
-                                                <td style={rowStyle}>{formatDateDdMmmYy(t.information_date)}</td>
-                                                <td style={rowStyle}>{t.type ?? '-'}</td>
-                                                <td style={rowStyle}>
+                                            <tr key={t.id} onClick={() => openEdit(t)} style={{ cursor: 'pointer' }}>
+                                                <td title={t.id}>{t.no}</td>
+                                                <td>{formatDateDdMmmYy(t.information_date)}</td>
+                                                <td>{t.type ?? '-'}</td>
+                                                <td>
                                                     <span className={`badge ${priorityBadgeClass[t.priority] ?? 'bg-secondary'}`}>{t.priority ?? '-'}</span>
                                                 </td>
-                                                <td style={rowStyle}>{t.user_position ?? '-'}</td>
-                                                <td style={rowStyle}>
+                                                <td>{t.user_position ?? '-'}</td>
+                                                <td>
                                                     {t.partner ? (
                                                         <>
                                                             <div>{t.partner.cnc_id}</div>
@@ -786,28 +732,18 @@ export default function TimeBoxingIndex({ items, filters, typeOptions, priorityO
                                                         '-'
                                                     )}
                                                 </td>
-                                                <td style={{ whiteSpace: 'pre-wrap', ...rowStyle }}>{t.description ?? '-'}</td>
-                                                <td style={{ whiteSpace: 'pre-wrap', ...rowStyle }}>{t.action_solution ?? '-'}</td>
-                                                <td style={rowStyle}>
+                                                <td style={{ whiteSpace: 'pre-wrap' }}>{t.description ?? '-'}</td>
+                                                <td style={{ whiteSpace: 'pre-wrap' }}>{t.action_solution ?? '-'}</td>
+                                                <td>
                                                     <span
                                                         className={`badge status-badge ${statusBadgeClass[t.status] ?? 'bg-secondary'} ${
-                                                            t.status === 'Priority List' || t.status === 'Ready Plan' ? 'status-badge-priority' : ''
+                                                            t.status === 'Priority List' || t.status === 'Ready Plan' || t.status === 'Time Boxing' ? 'status-badge-priority' : ''
                                                         }`}
                                                     >
                                                         {t.status ?? '-'}
                                                     </span>
                                                 </td>
-                                                <td style={rowStyle}>{t.due_date ? formatDateDdMmmYy(t.due_date) : '-'}</td>
-                                                <td className="text-end" style={rowStyle}>
-                                                    <div className="d-flex gap-2 justify-content-end">
-                                                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(t)}>
-                                                            Edit
-                                                        </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => doDelete(t)} disabled={processing}>
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
+                                                <td>{t.due_date ? formatDateDdMmmYy(t.due_date) : '-'}</td>
                                             </tr>
                                         )})}
                                     </tbody>

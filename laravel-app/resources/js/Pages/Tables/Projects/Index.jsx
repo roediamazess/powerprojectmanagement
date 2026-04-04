@@ -764,19 +764,18 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                                     {sortLabel('Status', 'status')}
                                                 </button>
                                             </th>
-                                            <th style={{ width: 160 }} />
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredProjects.length === 0 ? (
                                             <tr>
-                                                <td colSpan={10} className="text-center text-muted">
+                                                <td colSpan={9} className="text-center text-muted">
                                                     No projects found
                                                 </td>
                                             </tr>
                                         ) : null}
                                         {filteredProjects.map((p) => (
-                                            <tr key={p.id}>
+                                            <tr key={p.id} onClick={() => openEdit(p)} style={{ cursor: 'pointer' }}>
                                                 <td title={p.id}>{p.no ?? '-'}</td>
                                                 <td>{p.cnc_id ?? '-'}</td>
                                                 <td className="text-truncate" style={{ maxWidth: 320 }} title={p.project_name ?? ''}>
@@ -792,16 +791,6 @@ export default function ProjectsIndex({ projects, filters, partners, users, setu
                                                 <td>{p.start_date ? formatDateDdMmmYy(p.start_date) : '-'}</td>
                                                 <td>{p.end_date ? formatDateDdMmmYy(p.end_date) : '-'}</td>
                                                 <td>{p.status ?? '-'}</td>
-                                                <td className="text-end">
-                                                    <div className="d-flex gap-2 justify-content-end">
-                                                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(p)}>
-                                                            Edit
-                                                        </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => doDelete(p)} disabled={processing}>
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

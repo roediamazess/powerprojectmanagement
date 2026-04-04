@@ -42,6 +42,7 @@ services:
     volumes:
       - storage_data:/var/www/html/storage
       - public_build:/var/www/html/public/build
+      - /home/ubuntu/.config/rclone/rclone.conf:/etc/rclone/rclone.conf:ro
     depends_on:
       - db
     restart: unless-stopped

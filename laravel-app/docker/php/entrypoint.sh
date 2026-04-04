@@ -9,6 +9,14 @@ if [ "${1:-}" != "php-fpm" ]; then
   exec "$@"
 fi
 
+mkdir -p storage/backup/manual/db storage/backup/manual/files storage/backup/manual/meta >/dev/null 2>&1 || true
+chown -R www-data:www-data storage/backup >/dev/null 2>&1 || true
+chmod -R ug+rwX storage/backup >/dev/null 2>&1 || true
+
+mkdir -p storage/app/private >/dev/null 2>&1 || true
+chown -R www-data:www-data storage/app/private >/dev/null 2>&1 || true
+chmod -R ug+rwX storage/app/private >/dev/null 2>&1 || true
+
 if [ -z "${APP_KEY:-}" ]; then
   echo "APP_KEY wajib diisi untuk menjalankan php-fpm (set di .env untuk docker compose)" >&2
   exit 1

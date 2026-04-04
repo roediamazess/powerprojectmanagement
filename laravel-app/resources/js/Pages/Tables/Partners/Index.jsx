@@ -433,19 +433,18 @@ export default function PartnersIndex({ partners, filters, starOptions, statusOp
                                             <th style={{ minWidth: 180 }}>Last Visit Type</th>
                                             <th style={{ minWidth: 200 }}>Last Project</th>
                                             <th style={{ minWidth: 200 }}>Last Project Type</th>
-                                            <th style={{ width: 160 }} />
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredPartners.length === 0 ? (
                                             <tr>
-                                                <td colSpan={21} className="text-center text-muted">
+                                                <td colSpan={20} className="text-center text-muted">
                                                     No partners found
                                                 </td>
                                             </tr>
                                         ) : null}
                                         {filteredPartners.map((p) => (
-                                            <tr key={p.id}>
+                                            <tr key={p.id} onClick={() => openEdit(p)} style={{ cursor: 'pointer' }}>
                                                 <td>{p.id}</td>
                                                 <td>{p.cnc_id}</td>
                                                 <td>{p.name}</td>
@@ -478,16 +477,6 @@ export default function PartnersIndex({ partners, filters, starOptions, statusOp
                                                     {formatDateDdMmmYy(p.last_project)}
                                                 </td>
                                                 <td>{p.last_project_type ?? '-'}</td>
-                                                <td className="text-end">
-                                                    <div className="d-flex gap-2 justify-content-end">
-                                                        <button type="button" className="btn btn-sm btn-outline-primary" onClick={() => openEdit(p)}>
-                                                            Edit
-                                                        </button>
-                                                        <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => doDelete(p)} disabled={processing}>
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>

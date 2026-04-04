@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Arrangement;
 
 use App\Http\Controllers\Controller;
+use App\Models\ArrangementBatch;
 use App\Models\ArrangementSchedule;
 use App\Models\ArrangementSchedulePickup;
 use Illuminate\Http\Request;
@@ -22,10 +23,28 @@ class ArrangementController extends Controller
                 'pickups:id,schedule_id,user_id,points',
                 'pickups.user:id,name,tier',
             ])
-            ->where('status', 'Publish')
+            ->whereIn('status', ['Batched', 'Picked Up', 'Approved'])
+            ->whereHas('batch', function ($q) {
+                $q->where('status', 'Approved');
+            })
             ->orderBy('start_date')
             ->orderBy('end_date')
             ->get();
+
+        $batches = ArrangementBatch::query()
+            ->where('status', 'Approved')
+            ->with([
+                'schedules' => function ($q) {
+                    $q->select('id', 'batch_id', 'schedule_type', 'note', 'start_date', 'end_date', 'count', 'status')
+                        ->whereIn('status', ['Batched', 'Picked Up', 'Approved'])
+                        ->orderBy('start_date')
+                        ->orderBy('end_date');
+                },
+                'schedules.pickups:id,schedule_id,user_id,points',
+                'schedules.pickups.user:id,name,tier',
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get(['id', 'name', 'status', 'requirement_points', 'min_requirement_points', 'max_requirement_points', 'pickup_start_at', 'pickup_end_at']);
 
         $myPickups = ArrangementSchedulePickup::query()
             ->with([
@@ -39,10 +58,12 @@ class ArrangementController extends Controller
         return Inertia::render('Arrangement/Index', [
             'isManager' => $isManager,
             'availableSchedules' => $availableSchedules,
+            'batches' => $batches,
             'myPickups' => $myPickups,
             'myPoints' => self::tierPoints($user->tier),
         ]);
     }
+
 
     public static function tierPoints(?string $tier): int
     {
@@ -57,4 +78,3 @@ class ArrangementController extends Controller
         };
     }
 }
-

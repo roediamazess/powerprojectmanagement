@@ -1,0 +1,10 @@
+Navigasi Utama:
+- Dashboard (dashboard, office-agent.index, dashboard.partners, projects.index, ...)
+- CMS (Content, Add Content, Menus, Email Template, ...)
+- Apps (Profile, Edit Profile, Email, Calendar, Shop, ...)
+- Tables (User Management, Partner Setup, Project Setup, Time Boxing Setup, ...)
+- Arrangement (arrangements.index)
+- Partners (partners.index)
+- Projects (projects.index)
+- Time Boxing (time-boxing.index)
+- Audit Logs (audit-logs.index)

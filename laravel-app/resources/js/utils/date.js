@@ -88,7 +88,9 @@ export function parseDateDdMmmYyToIso(value) {
 export function formatDateTimeDdMmmYyDayHms(value) {
     if (!value) return '-';
 
-    const d = new Date(value);
+    const raw = String(value).trim();
+    const normalized = raw.replace(/([+-]\d{2}):(\d{2})$/, '$1$2').replace(/\+00:00$/, 'Z');
+    const d = new Date(normalized);
     if (Number.isNaN(d.getTime())) return String(value);
 
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -103,6 +105,66 @@ export function formatDateTimeDdMmmYyDayHms(value) {
     const ss = String(d.getSeconds()).padStart(2, '0');
 
     return `${dd} ${mmm} ${yy} - ${day}, ${hh}:${mm}:${ss}`;
+}
+
+export function formatDateTimeDdMmmYyHms(value) {
+    if (!value) return '-';
+
+    const raw = String(value).trim();
+    const normalized = raw.replace(/([+-]\d{2}):(\d{2})$/, '$1$2').replace(/\+00:00$/, 'Z');
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) return String(value);
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mmm = months[d.getMonth()] ?? '';
+    const yy = String(d.getFullYear()).slice(-2);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+
+    return `${dd} ${mmm} ${yy} - ${hh}:${mm}:${ss}`;
+}
+
+export function formatDateTimeDdMmmYyHmsWib(value) {
+    if (!value) return '-';
+
+    const raw = String(value).trim();
+    const normalized = raw.replace(/([+-]\d{2}):(\d{2})$/, '$1$2').replace(/\+00:00$/, 'Z');
+    const d = new Date(normalized);
+    if (Number.isNaN(d.getTime())) return String(value);
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jakarta',
+        day: '2-digit',
+        month: 'short',
+        year: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }).formatToParts(d);
+
+    const byType = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const dd = byType.day ?? '';
+    const mmm = byType.month ?? '';
+    const yy = byType.year ?? '';
+    const hh = byType.hour ?? '';
+    const mm = byType.minute ?? '';
+    const ss = byType.second ?? '';
+
+    return `${dd} ${mmm} ${yy} - ${hh}:${mm}:${ss}`;
+}
+
+export function formatPickupWindowWib(startValue, endValue) {
+    if (!startValue || !endValue) return '-';
+    const startText = formatDateTimeDdMmmYyHmsWib(startValue);
+    const endText = formatDateTimeDdMmmYyHmsWib(endValue);
+    const startParts = startText.split(' - ');
+    const endParts = endText.split(' - ');
+    if (startParts.length !== 2 || endParts.length !== 2) return `${startText} — ${endText}`;
+    return `${startParts[0]} – ${startParts[1]} – ${endParts[0]} – ${endParts[1]}`;
 }
 
 export function getDateAgingColor(value) {
@@ -134,5 +196,3 @@ export function getDateAgingColor(value) {
     }
     return 'aging-red'; // Over 2 years
 }
-
-

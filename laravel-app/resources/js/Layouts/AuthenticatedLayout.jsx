@@ -34,7 +34,12 @@ export default function AuthenticatedLayout({ header, children }) {
     const [openMenu, setOpenMenu] = useState(getClosedMenuState);
 
     useEffect(() => {
-        setOpenMenu(getClosedMenuState());
+        const next = getClosedMenuState();
+        const raw = String(url || '').split('?')[0].split('#')[0];
+        const path = raw.startsWith('/') ? raw : `/${raw}`;
+        if (path === '/dashboard' || path.startsWith('/dashboard/')) next.dashboard = true;
+        if (path === '/tables' || path.startsWith('/tables/')) next.tables = true;
+        setOpenMenu(next);
     }, [url]);
 
     const closeAllMenus = () => {
@@ -823,35 +828,6 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     }, [url]);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const menu = document.getElementById('react-menu');
-        if (!menu) return;
-
-        const scrub = () => {
-            menu.querySelectorAll('li.mm-active').forEach((li) => li.classList.remove('mm-active'));
-            menu.querySelectorAll('ul.mm-show').forEach((ul) => ul.classList.remove('mm-show'));
-
-            menu.querySelectorAll('a.has-arrow').forEach((a) => a.setAttribute('aria-expanded', 'false'));
-
-            menu.querySelectorAll('a.has-arrow + ul').forEach((ul) => {
-                if (!(ul instanceof HTMLElement)) return;
-                ul.style.display = 'none';
-                ul.classList.remove('mm-show', 'mm-collapsing');
-                if (!ul.classList.contains('mm-collapse')) ul.classList.add('mm-collapse');
-            });
-        };
-
-        requestAnimationFrame(scrub);
-        const t1 = window.setTimeout(scrub, 50);
-        const t2 = window.setTimeout(scrub, 200);
-
-        return () => {
-            window.clearTimeout(t1);
-            window.clearTimeout(t2);
-        };
-    }, [url]);
-
     return (
         <>
             <div id="main-wrapper">
@@ -1436,6 +1412,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <span className="nav-text">Time Boxing</span>
                                 </Link>
                             </li>
+                            {roles.includes('Administrator') && (
+                                <li>
+                                    <Link
+                                        href={route('backups.index', {}, false)}
+                                        className={isActiveHref(route('backups.index', {}, false)) ? 'mm-active' : ''}
+                                        onClick={closeAllMenus}
+                                    >
+                                        <i className="fas fa-database" />
+                                        <span className="nav-text">Backups</span>
+                                    </Link>
+                                </li>
+                            )}
                             <li>
                                 <Link
                                     href={route('audit-logs.index', {}, false)}

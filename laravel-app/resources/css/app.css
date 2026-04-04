@@ -16,8 +16,8 @@
 [data-theme-version="dark"] .drilldown-modal-panel .modal-content,
 [data-bs-theme="dark"] .drilldown-modal-panel,
 body.dark .drilldown-modal-panel {
-    background-color: #312a2a !important;
-    background: #312a2a !important;
+    background-color: #1e1e2d !important;
+    background: #1e1e2d !important;
     color: #ffffff !important;
 }
 
@@ -41,7 +41,7 @@ body:not(.dark) .drilldown-modal-panel:not([data-theme-version="dark"]) {
 .drilldown-modal-panel thead { background: #f8f9fa !important; color: #212529 !important; }
 [data-theme-version="dark"] .drilldown-modal-panel thead,
 [data-bs-theme="dark"] .drilldown-modal-panel thead {
-    background: #312a2a !important;
+    background: #2c2c3d !important;
     color: #ffffff !important;
 }
 
@@ -101,7 +101,7 @@ body:not(.dark) .drilldown-modal-panel:not([data-theme-version="dark"]) {
 }
 [data-theme-version="dark"] .apexcharts-tooltip,
 [data-bs-theme="dark"] .apexcharts-tooltip {
-    background: #312a2a !important;
+    background: #1e1e2d !important;
     color: #ffffff !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
 }
