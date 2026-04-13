@@ -111,7 +111,7 @@
       <div class="row mb-3">
         <div class="col-md-6">
           <label class="form-label">Sort Order</label>
-          <InputText v-model="valForm.sort_order" type="number" class="w-100" />
+          <InputNumber v-model="valForm.sort_order" class="w-100" />
         </div>
         <div class="col-md-6 d-flex align-items-end">
           <div class="form-check form-switch mb-2">
@@ -133,6 +133,7 @@
 import { onMounted, ref } from 'vue'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'

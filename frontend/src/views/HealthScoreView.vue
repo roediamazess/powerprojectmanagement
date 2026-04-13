@@ -20,14 +20,14 @@
       <div class="card">
         <div class="card-header d-flex align-items-center justify-content-between">
           <h4 class="card-title mb-0">Health Score Surveys</h4>
-          <Button label="Refresh" :loading="loading" severity="secondary" @click="load" />
+          <Button label="Refresh" :loading="loading" severity="secondary" @click="() => load()" />
         </div>
         <div class="card-body">
           <!-- Filters -->
           <div class="row g-2 mb-3">
             <div class="col-md-3">
               <label class="form-label">Partner</label>
-              <InputText v-model="filterPartner" class="w-100" placeholder="Partner name…" @input="load" />
+              <InputText v-model="filterPartner" class="w-100" placeholder="Partner name…" @input="() => load()" />
             </div>
             <div class="col-md-2">
               <label class="form-label">Year</label>
