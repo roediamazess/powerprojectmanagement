@@ -13,7 +13,7 @@
               <InputText v-model="search" class="w-100" placeholder="Search name or email…" @input="onSearch" />
             </div>
             <div class="col-md-2 d-flex align-items-end">
-              <Button label="Refresh" :loading="loading" severity="secondary" class="w-100" @click="load" />
+              <Button label="Refresh" :loading="loading" severity="secondary" class="w-100" @click="() => load()" />
             </div>
           </div>
 

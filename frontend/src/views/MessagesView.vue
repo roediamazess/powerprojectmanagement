@@ -26,8 +26,8 @@
                 <h6 class="mb-0 fw-bold" :class="{'text-primary': t.unread_count > 0}">{{ t.user.name }}</h6>
                 <small class="text-muted">{{ formatDateObj(t.last_message.created_at) }}</small>
               </div>
-              <p class="mb-0 text-truncate text-muted" style="max-width: 90%" :class="{'fw-bold text-dark': t.unread_count > 0 && String(t.last_message.sender_id) !== String(auth.user?.id)}">
-                <i v-if="String(t.last_message.sender_id) === String(auth.user?.id)" class="pi pi-replay fw-bold me-1 font-12"></i>
+              <p class="mb-0 text-truncate text-muted" style="max-width: 90%" :class="{'fw-bold text-dark': t.unread_count > 0 && String(t.last_message.sender_id) !== String(auth.me?.id)}">
+                <i v-if="String(t.last_message.sender_id) === String(auth.me?.id)" class="pi pi-replay fw-bold me-1 font-12"></i>
                 {{ t.last_message.body }}
               </p>
               <div v-if="t.unread_count > 0" class="position-absolute" style="right: 15px; bottom: 15px">
@@ -223,7 +223,7 @@ const sendNewMessage = async () => {
   }
 }
 
-const isMe = (id: string) => String(id) === String(auth.user?.id)
+const isMe = (id: string) => String(id) === String(auth.me?.id)
 
 const scrollToBottom = async () => {
   await nextTick()
