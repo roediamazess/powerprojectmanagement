@@ -136,6 +136,7 @@
                 <span class="nav-text">System</span>
               </a>
               <ul aria-expanded="false">
+                <li><RouterLink to="/lookup" active-class="mm-active">Master Data</RouterLink></li>
                 <li><RouterLink to="/notifications" active-class="mm-active">Notifications</RouterLink></li>
                 <li><RouterLink to="/audit-logs" active-class="mm-active">Audit Logs</RouterLink></li>
                 <li><RouterLink to="/backups" active-class="mm-active">Backups</RouterLink></li>

@@ -24,6 +24,7 @@ export const router = createRouter({
     { path: '/users', name: 'users', meta: { title: 'Users', layout: 'app' }, component: () => import('../views/UsersView.vue') },
     { path: '/roles', name: 'roles', meta: { title: 'Roles & Permissions', layout: 'app' }, component: () => import('../views/RolesView.vue') },
     // System
+    { path: '/lookup', name: 'lookup', meta: { title: 'Master Data (Lookup)', layout: 'app' }, component: () => import('../views/LookupView.vue') },
     { path: '/notifications', name: 'notifications', meta: { title: 'Notifications', layout: 'app' }, component: () => import('../views/NotificationsView.vue') },
     { path: '/audit-logs', name: 'audit-logs', meta: { title: 'Audit Logs', layout: 'app' }, component: () => import('../views/AuditLogsView.vue') },
     { path: '/backups', name: 'backups', meta: { title: 'Backups', layout: 'app' }, component: () => import('../views/BackupsView.vue') },
