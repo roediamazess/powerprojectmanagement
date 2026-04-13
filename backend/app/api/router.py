@@ -5,7 +5,7 @@ from fastapi.routing import APIRoute
 from starlette.responses import JSONResponse, Response
 
 from app.api.routes import (
-    arrangements, audit_logs, auth, backups, compliance, health,
+    arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance, health,
     health_score, lookup, notifications, partners, profile, projects,
     roles, time_boxings, users,
 )
@@ -42,6 +42,7 @@ api_router.include_router(perm_router, prefix="/permissions", tags=["permissions
 api_router.include_router(partners.router, prefix="/partners", tags=["partners"])
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 api_router.include_router(arrangements.router, prefix="/arrangements", tags=["arrangements"])
+api_router.include_router(arrangement_jobsheets.router, prefix="/arrangements/jobsheet", tags=["arrangements-jobsheet"])
 api_router.include_router(time_boxings.router, prefix="/time-boxings", tags=["time-boxings"])
 api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])
 api_router.include_router(health_score.router, prefix="/health-score", tags=["health-score"])

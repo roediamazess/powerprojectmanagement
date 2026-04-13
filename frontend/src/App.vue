@@ -101,7 +101,8 @@
                 <li><RouterLink to="/partners" active-class="mm-active">Partners</RouterLink></li>
                 <li><RouterLink to="/projects" active-class="mm-active">Projects</RouterLink></li>
                 <li><RouterLink to="/time-boxing" active-class="mm-active">Time Boxing</RouterLink></li>
-                <li><RouterLink to="/arrangements" active-class="mm-active">Arrangement</RouterLink></li>
+                <li><RouterLink to="/arrangements" active-class="mm-active">Arrangements</RouterLink></li>
+                <li><RouterLink to="/arrangements/jobsheet" active-class="mm-active">Jobsheets</RouterLink></li>
               </ul>
             </li>
 

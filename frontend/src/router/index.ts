@@ -16,6 +16,7 @@ export const router = createRouter({
     { path: '/projects', name: 'projects', meta: { title: 'Projects', layout: 'app' }, component: () => import('../views/ProjectsView.vue') },
     // Operations
     { path: '/arrangements', name: 'arrangements', meta: { title: 'Arrangement', layout: 'app' }, component: () => import('../views/ArrangementsView.vue') },
+    { path: '/arrangements/jobsheet', name: 'arrangements-jobsheet', meta: { title: 'Arrangement Jobsheet', layout: 'app' }, component: () => import('../views/ArrangementsJobsheetView.vue') },
     { path: '/compliance', name: 'compliance', meta: { title: 'Compliance', layout: 'app' }, component: () => import('../views/ComplianceView.vue') },
     { path: '/compliance/surveys/:id', name: 'compliance-survey', meta: { title: 'Compliance Survey', layout: 'app' }, component: () => import('../views/ComplianceSurveyView.vue') },
     { path: '/time-boxing', name: 'time-boxing', meta: { title: 'Time Boxing', layout: 'app' }, component: () => import('../views/TimeBoxingView.vue') },
