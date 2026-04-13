@@ -5,9 +5,9 @@ from fastapi.routing import APIRoute
 from starlette.responses import JSONResponse, Response
 
 from app.api.routes import (
-    arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance, health,
-    health_score, lookup, notifications, partners, profile, projects,
-    roles, time_boxings, users,
+    arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance,
+    dashboard, health, health_score, lookup, notifications, partners, profile,
+    projects, roles, time_boxings, users,
 )
 from app.api.routes.roles import perm_router
 
@@ -30,6 +30,7 @@ api_router = APIRouter(route_class=EnvelopeRoute)
 
 # Core
 api_router.include_router(health.router, tags=["health"])
+api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 
