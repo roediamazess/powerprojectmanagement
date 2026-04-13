@@ -26,6 +26,8 @@ export const router = createRouter({
     { path: '/roles', name: 'roles', meta: { title: 'Roles & Permissions', layout: 'app' }, component: () => import('../views/RolesView.vue') },
     // System
     { path: '/lookup', name: 'lookup', meta: { title: 'Master Data (Lookup)', layout: 'app' }, component: () => import('../views/LookupView.vue') },
+    { path: '/office-agent', name: 'office-agent', meta: { title: 'Office Agent Workspace', layout: 'app' }, component: () => import('../views/OfficeAgentView.vue') },
+    { path: '/messages', name: 'messages', meta: { title: 'Direct Messages', layout: 'app' }, component: () => import('../views/MessagesView.vue') },
     { path: '/notifications', name: 'notifications', meta: { title: 'Notifications', layout: 'app' }, component: () => import('../views/NotificationsView.vue') },
     { path: '/audit-logs', name: 'audit-logs', meta: { title: 'Audit Logs', layout: 'app' }, component: () => import('../views/AuditLogsView.vue') },
     { path: '/backups', name: 'backups', meta: { title: 'Backups', layout: 'app' }, component: () => import('../views/BackupsView.vue') },

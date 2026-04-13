@@ -90,6 +90,13 @@
                 <span class="nav-text">Dashboard</span>
               </RouterLink>
             </li>
+            
+            <li>
+              <RouterLink to="/office-agent" active-class="mm-active">
+                <i class="fas fa-robot" />
+                <span class="nav-text">Office Agent</span>
+              </RouterLink>
+            </li>
 
             <!-- Operations group -->
             <li>
@@ -138,6 +145,7 @@
               </a>
               <ul aria-expanded="false">
                 <li><RouterLink to="/lookup" active-class="mm-active">Master Data</RouterLink></li>
+                <li><RouterLink to="/messages" active-class="mm-active">Messages</RouterLink></li>
                 <li><RouterLink to="/notifications" active-class="mm-active">Notifications</RouterLink></li>
                 <li><RouterLink to="/audit-logs" active-class="mm-active">Audit Logs</RouterLink></li>
                 <li><RouterLink to="/backups" active-class="mm-active">Backups</RouterLink></li>

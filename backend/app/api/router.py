@@ -6,7 +6,7 @@ from starlette.responses import JSONResponse, Response
 
 from app.api.routes import (
     arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance,
-    dashboard, health, health_score, lookup, notifications, partners, profile,
+    dashboard, health, health_score, lookup, messages, notifications, office_agent, partners, profile,
     projects, roles, time_boxings, users,
 )
 from app.api.routes.roles import perm_router
@@ -50,6 +50,8 @@ api_router.include_router(health_score.router, prefix="/health-score", tags=["he
 
 # System
 api_router.include_router(lookup.router, prefix="/lookup", tags=["lookup"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(office_agent.router, prefix="/office-agent", tags=["office-agent"])
 api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["audit-logs"])
 api_router.include_router(backups.router, prefix="/backups", tags=["backups"])
