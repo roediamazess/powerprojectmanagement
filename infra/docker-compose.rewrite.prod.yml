@@ -1,0 +1,111 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ppm
+      POSTGRES_USER: ppm
+      POSTGRES_PASSWORD: ppm
+    volumes:
+      - ppm_prod_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppm -d ppm"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - ppm_prod_redis:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /var/backups/ppm
+      COOKIE_SECURE: "true"
+      COOKIE_SAMESITE: lax
+      CORS_ORIGINS: https://powerpm.online
+      ADMIN_EMAIL: admin@local.test
+      ADMIN_PASSWORD: admin12345
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ppm_prod_backups:/var/backups/ppm
+    command:
+      [
+        "sh",
+        "-lc",
+        "python -m app.scripts.wait_for_db && alembic upgrade head && python -m app.seed_initial && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+      ]
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /var/backups/ppm
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ppm_prod_backups:/var/backups/ppm
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=INFO"]
+
+  beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: prod
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+      BACKUP_DIR: /var/backups/ppm
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ppm_prod_backups:/var/backups/ppm
+    command: ["celery", "-A", "app.worker.celery_app", "beat", "--loglevel=INFO"]
+
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.prod
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    volumes:
+      - ../laravel-app/public/vendor:/usr/share/nginx/html/vendor:ro
+      - ../laravel-app/public/css:/usr/share/nginx/html/css:ro
+      - ../laravel-app/public/js:/usr/share/nginx/html/js:ro
+      - ../laravel-app/public/images:/usr/share/nginx/html/images:ro
+      - ../laravel-app/public/icons:/usr/share/nginx/html/icons:ro
+      - ../laravel-app/public/favicon.png:/usr/share/nginx/html/favicon.png:ro
+      - ../laravel-app/public/favicon.ico:/usr/share/nginx/html/favicon.ico:ro
+    restart: unless-stopped
+
+volumes:
+  ppm_prod_db:
+  ppm_prod_redis:
+  ppm_prod_backups:

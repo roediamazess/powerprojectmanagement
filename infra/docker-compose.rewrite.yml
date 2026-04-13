@@ -1,0 +1,97 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ppm
+      POSTGRES_USER: ppm
+      POSTGRES_PASSWORD: ppm
+    ports:
+      - "54321:5432"
+    volumes:
+      - ppm_rewrite_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ppm -d ppm"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "63790:6379"
+    volumes:
+      - ppm_rewrite_redis:/data
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: dev
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+      COOKIE_SECURE: "false"
+      COOKIE_SAMESITE: lax
+      CORS_ORIGINS: http://localhost:5173
+      ADMIN_EMAIL: admin@local.test
+      ADMIN_PASSWORD: admin12345
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+    command: ["sh", "-lc", "python -m app.scripts.wait_for_db && alembic upgrade head && python -m app.seed_initial && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
+
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: dev
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - ../backend:/app
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=INFO"]
+
+  beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      ENV: dev
+      DATABASE_URL: postgresql+psycopg://ppm:ppm@db:5432/ppm
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - ../backend:/app
+    command: ["celery", "-A", "app.worker.celery_app", "beat", "--loglevel=INFO"]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend:/app
+      - ppm_rewrite_frontend_node_modules:/app/node_modules
+    command: ["sh", "-lc", "npm install && npm run dev -- --host 0.0.0.0"]
+
+volumes:
+  ppm_rewrite_db:
+  ppm_rewrite_redis:
+  ppm_rewrite_frontend_node_modules:

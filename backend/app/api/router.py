@@ -7,7 +7,7 @@ from starlette.responses import JSONResponse, Response
 from app.api.routes import (
     arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance,
     dashboard, health, health_score, lookup, messages, notifications, office_agent, partners, profile,
-    projects, roles, time_boxings, users,
+    projects, roles, telegram, time_boxings, users,
 )
 from app.api.routes.roles import perm_router
 

@@ -44,3 +44,12 @@ Time Boxing.xlsx
 # workspace copies
 power-project-management
 power-project-management/
+
+# python artifacts (rewrite backend)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+backend/.venv/
