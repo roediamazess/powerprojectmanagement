@@ -1,0 +1,39 @@
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, usePage } from '@inertiajs/react';
+import UpdatePasswordForm from './Partials/UpdatePasswordForm';
+import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
+
+export default function Edit({ mustVerifyEmail, status }) {
+    const roles = usePage().props?.auth?.roles || [];
+    const canEditProfile = roles.includes('Administrator');
+
+    return (
+        <AuthenticatedLayout
+            header={
+                <h2 className="text-xl font-semibold leading-tight text-gray-800">
+                    Profile
+                </h2>
+            }
+        >
+            <Head title="Profile" />
+
+            <div className="py-12">
+                <div className="mx-auto max-w-7xl space-y-6 sm:px-6 lg:px-8">
+                    {canEditProfile ? (
+                        <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                            <UpdateProfileInformationForm
+                                mustVerifyEmail={mustVerifyEmail}
+                                status={status}
+                                className="max-w-xl"
+                            />
+                        </div>
+                    ) : null}
+
+                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                        <UpdatePasswordForm className="max-w-xl" />
+                    </div>
+                </div>
+            </div>
+        </AuthenticatedLayout>
+    );
+}
