@@ -25,6 +25,10 @@ class Partner(Base):
     system_version_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("lookup_values.id"), nullable=True)
     partner_type_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("lookup_values.id"), nullable=True)
     partner_group_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("lookup_values.id"), nullable=True)
+    last_visit: Mapped[sa.Date | None] = mapped_column(sa.Date(), nullable=True)
+    last_visit_type: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
+    last_project: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
+    last_project_type: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
     created_at: Mapped[sa.DateTime] = mapped_column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()"))
     updated_at: Mapped[sa.DateTime] = mapped_column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()"))
 

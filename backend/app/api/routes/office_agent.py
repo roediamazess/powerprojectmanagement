@@ -4,7 +4,7 @@ import asyncio
 import os
 import urllib.request
 from datetime import datetime
-from typing import Any, AsyncGenerator
+from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -137,4 +137,3 @@ def get_logger_events(since: str | None = None):
 def get_security_events(since: str | None = None):
     # Dummy until implemented
     return {"now": datetime.utcnow().isoformat(), "items": []}
-

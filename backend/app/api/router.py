@@ -6,8 +6,8 @@ from starlette.responses import JSONResponse, Response
 
 from app.api.routes import (
     arrangement_jobsheets, arrangements, audit_logs, auth, backups, compliance,
-    dashboard, health, health_score, lookup, messages, notifications, office_agent, partners, profile,
-    projects, roles, telegram, time_boxings, users,
+    dashboard, health, health_score, holidays, lookup, messages, notifications, office_agent, partners, profile,
+    projects, public_partners, roles, time_boxings, users,
 )
 from app.api.routes.roles import perm_router
 
@@ -20,6 +20,10 @@ class EnvelopeRoute(APIRoute):
             result = await original_handler(request)
             if isinstance(result, Response):
                 return result
+
+            if self.status_code == 204:
+                return Response(status_code=204)
+
             if isinstance(result, dict) and set(result.keys()) >= {"data", "meta", "error"}:
                 return JSONResponse(content=result)
             return JSONResponse(content={"data": result, "meta": None, "error": None})
@@ -33,6 +37,9 @@ api_router.include_router(health.router, tags=["health"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
+
+# Public (no auth)
+api_router.include_router(public_partners.router, prefix="/public", tags=["public"])
 
 # User & RBAC management
 api_router.include_router(users.router, prefix="/users", tags=["users"])
@@ -55,3 +62,4 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(office_agent.router, prefix="/office-agent", tags=["office-agent"])
 api_router.include_router(audit_logs.router, prefix="/audit-logs", tags=["audit-logs"])
 api_router.include_router(backups.router, prefix="/backups", tags=["backups"])
+api_router.include_router(holidays.router, prefix="/holidays", tags=["holidays"])

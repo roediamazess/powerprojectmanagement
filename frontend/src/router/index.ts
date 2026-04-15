@@ -10,6 +10,7 @@ export const router = createRouter({
     { path: '/compliance/public/:token', name: 'compliance-public', meta: { title: 'Compliance', layout: 'public', public: true }, component: () => import('../views/CompliancePublicView.vue') },
     // App
     { path: '/dashboard', name: 'dashboard', meta: { title: 'Dashboard', layout: 'app' }, component: () => import('../views/DashboardView.vue') },
+    { path: '/dashboard/partners-insight', name: 'partners-dashboard', meta: { title: 'Partners Insight', layout: 'app' }, component: () => import('../views/PartnersDashboardView.vue') },
     { path: '/profile', name: 'profile', meta: { title: 'Profile', layout: 'app' }, component: () => import('../views/ProfileView.vue') },
     // Partners & Projects
     { path: '/partners', name: 'partners', meta: { title: 'Partners', layout: 'app' }, component: () => import('../views/PartnersView.vue') },
@@ -24,6 +25,9 @@ export const router = createRouter({
     // Admin
     { path: '/users', name: 'users', meta: { title: 'Users', layout: 'app' }, component: () => import('../views/UsersView.vue') },
     { path: '/roles', name: 'roles', meta: { title: 'Roles & Permissions', layout: 'app' }, component: () => import('../views/RolesView.vue') },
+    { path: '/tables/partner-setup', name: 'tables-partner-setup', meta: { title: 'Partner Setup', layout: 'app' }, component: () => import('../views/LookupView.vue'), props: { allowedKeys: ['partner.implementation_type', 'partner.system_version', 'partner.type', 'partner.group', 'partner.area', 'partner.sub_area'] } },
+    { path: '/tables/project-setup', name: 'tables-project-setup', meta: { title: 'Project Setup', layout: 'app' }, component: () => import('../views/LookupView.vue'), props: { allowedKeys: ['project.type', 'project.status'] } },
+    { path: '/tables/time-boxing-setup', name: 'tables-time-boxing-setup', meta: { title: 'Time Boxing Setup', layout: 'app' }, component: () => import('../views/LookupView.vue'), props: { allowedKeys: ['time_boxing.type', 'time_boxing.priority', 'time_boxing.status'] } },
     // System
     { path: '/lookup', name: 'lookup', meta: { title: 'Master Data (Lookup)', layout: 'app' }, component: () => import('../views/LookupView.vue') },
     { path: '/office-agent', name: 'office-agent', meta: { title: 'Office Agent Workspace', layout: 'app' }, component: () => import('../views/OfficeAgentView.vue') },
@@ -31,6 +35,7 @@ export const router = createRouter({
     { path: '/notifications', name: 'notifications', meta: { title: 'Notifications', layout: 'app' }, component: () => import('../views/NotificationsView.vue') },
     { path: '/audit-logs', name: 'audit-logs', meta: { title: 'Audit Logs', layout: 'app' }, component: () => import('../views/AuditLogsView.vue') },
     { path: '/backups', name: 'backups', meta: { title: 'Backups', layout: 'app' }, component: () => import('../views/BackupsView.vue') },
+    { path: '/holidays', name: 'holidays', meta: { title: 'Holidays', layout: 'app' }, component: () => import('../views/HolidaysView.vue') },
   ]
 })
 

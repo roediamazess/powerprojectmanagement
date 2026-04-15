@@ -71,8 +71,10 @@
       </div>
       <div v-if="dialogError" class="text-danger mb-2">{{ dialogError }}</div>
       <template #footer>
-        <Button label="Cancel" severity="secondary" @click="showDialog = false" />
-        <Button :label="editingRole ? 'Save' : 'Create'" :loading="saving" @click="submitForm" />
+        <div class="d-flex justify-content-end gap-2 w-100">
+          <Button :label="editingRole ? 'Save' : 'Create'" :loading="saving" @click="submitForm" />
+          <Button label="Cancel" severity="secondary" @click="showDialog = false" />
+        </div>
       </template>
     </Dialog>
   </div>

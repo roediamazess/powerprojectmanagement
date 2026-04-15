@@ -22,12 +22,14 @@ class CategoryCreate(BaseModel):
 class ValueCreate(BaseModel):
     value: str
     label: str
+    parent_id: str | None = None
     sort_order: int = 0
     is_active: bool = True
 
 
 class ValueUpdate(BaseModel):
     label: str | None = None
+    parent_id: str | None = None
     sort_order: int | None = None
     is_active: bool | None = None
 
@@ -40,12 +42,24 @@ def list_categories(
     rows = db.execute(
         select(LookupCategory).options(selectinload(LookupCategory.values)).order_by(LookupCategory.key)
     ).scalars().all()
+    
+    # Pre-fetch all labels for parent mapping if needed
+    value_labels = {v.id: v.label for cat in rows for v in cat.values}
+
     data = [
         {
             "id": cat.id,
             "key": cat.key,
             "values": [
-                {"id": v.id, "value": v.value, "label": v.label, "sort_order": v.sort_order, "is_active": v.is_active}
+                {
+                    "id": v.id, 
+                    "value": v.value, 
+                    "label": v.label, 
+                    "parent_id": v.parent_id,
+                    "parent_label": value_labels.get(v.parent_id) if v.parent_id else None,
+                    "sort_order": v.sort_order, 
+                    "is_active": v.is_active
+                }
                 for v in sorted(cat.values, key=lambda x: x.sort_order)
             ],
         }
@@ -108,6 +122,7 @@ def add_value(
         category_id=category_id,
         value=payload.value.strip(),
         label=payload.label.strip(),
+        parent_id=payload.parent_id,
         sort_order=payload.sort_order,
         is_active=payload.is_active,
     )
@@ -130,9 +145,11 @@ def update_value(
     v = db.get(LookupValue, value_id)
     if not v:
         raise HTTPException(status_code=404, detail="Value not found")
-    before = {"label": v.label, "sort_order": v.sort_order, "is_active": v.is_active}
+    before = {"label": v.label, "sort_order": v.sort_order, "is_active": v.is_active, "parent_id": v.parent_id}
     if payload.label is not None:
         v.label = payload.label.strip()
+    if payload.parent_id is not None:
+        v.parent_id = payload.parent_id
     if payload.sort_order is not None:
         v.sort_order = payload.sort_order
     if payload.is_active is not None:
@@ -143,7 +160,7 @@ def update_value(
     return {"id": v.id}
 
 
-@router.delete("/values/{value_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/values/{value_id}", status_code=status.HTTP_200_OK)
 def delete_value(
     value_id: str,
     db: Session = Depends(get_db),

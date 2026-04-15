@@ -61,10 +61,6 @@ body {
   border-radius: 50%;
 }
 
-.grid-line {
-  position: relative;
-}
-
 .grid-line::before {
   content: '';
   position: absolute;
@@ -74,4 +70,206 @@ body {
   height: 1px;
   background-color: #f1f5f9;
   z-index: 0;
+}
+
+/* Global Dark Mode Consistency for PowerPro */
+body[data-theme-version="dark"] {
+    --card-bg: #1e1e2d;
+    --modal-header-bg: #242436;
+    --table-header-bg: #212130;
+    --border-color: #2b2b40;
+    --section-border: #323248;
+    --input-bg: #1e1e2d;
+    --text-base: #e1e1e3;
+    --text-muted: #a1a1a1;
+    --primary-accent: #8b5cf6;
+    --addon-bg: #242436;
+    --disabled-bg: #2b2b40;
+    --contact-card-bg: #242436;
+}
+
+/* Force dark backgrounds on common elements */
+body[data-theme-version="dark"] .card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+body[data-theme-version="dark"] .card-header, 
+body[data-theme-version="dark"] .card-footer {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-base) !important;
+}
+
+/* PrimeVue Dialog / Modal Dark Overrides - EXTREME SPECIFICITY */
+body[data-theme-version="dark"] .p-dialog,
+body[data-theme-version="dark"] .p-dialog-header,
+body[data-theme-version="dark"] .p-dialog-content,
+body[data-theme-version="dark"] .p-dialog-footer {
+    background-color: #1e1e2d !important;
+    color: #e1e1e3 !important;
+    border-color: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-dialog .p-dialog-header .p-dialog-title {
+    color: #e1e1e3 !important;
+}
+
+body[data-theme-version="dark"] .p-dialog .p-dialog-header .p-dialog-header-icon {
+    color: #a1a1a1 !important;
+}
+
+body[data-theme-version="dark"] .p-dialog .p-dialog-header .p-dialog-header-icon:hover {
+    background: #2b2b40 !important;
+}
+
+/* Department Contact Cards inside Modals */
+body[data-theme-version="dark"] .department-contact-card {
+    background: #242436 !important;
+    border-color: #323248 !important;
+}
+
+body[data-theme-version="dark"] .department-contact-card .text-muted,
+body[data-theme-version="dark"] .department-contact-card label {
+    color: #a1a1a1 !important;
+}
+
+/* Common Modal Headers inside the Content */
+body[data-theme-version="dark"] .modal-section-header {
+    border-bottom: 2px solid #323248 !important;
+    color: #8b5cf6 !important;
+    background: transparent !important;
+}
+
+body[data-theme-version="dark"] .field-label {
+    color: #a1a1a1 !important;
+}
+
+/* Rating stars in dark mode */
+body[data-theme-version="dark"] .p-rating .p-rating-item .p-icon {
+    color: #4b4b61 !important;
+}
+body[data-theme-version="dark"] .p-rating .p-rating-item.p-rating-item-active .p-icon {
+    color: #f59e0b !important;
+}
+
+/* PrimeVue DataTable Dark Overrides */
+body[data-theme-version="dark"] .p-datatable {
+    background-color: #1e1e2d !important;
+    color: #e1e1e3 !important;
+    border: none !important;
+}
+
+body[data-theme-version="dark"] .p-datatable .p-datatable-thead > tr > th {
+    background: #212130 !important;
+    color: #a1a1a1 !important;
+    border-color: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-datatable .p-datatable-tbody > tr {
+    background: #1e1e2d !important;
+    color: #e1e1e3 !important;
+    border-color: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-datatable.p-datatable-striped .p-datatable-tbody > tr:nth-child(even) {
+    background: #242436 !important;
+}
+
+body[data-theme-version="dark"] .p-datatable .p-datatable-tbody > tr:hover {
+    background: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-datatable .p-datatable-tbody > tr > td {
+    border-color: #2b2b40 !important;
+    color: #e1e1e3 !important;
+}
+
+/* Pagination & Controls */
+body[data-theme-version="dark"] .p-paginator {
+    background: #1e1e2d !important;
+    border-color: #2b2b40 !important;
+    color: #e1e1e3 !important;
+    border-top: 1px solid #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-paginator .p-paginator-pages .p-paginator-page {
+    color: #e1e1e3 !important;
+}
+
+body[data-theme-version="dark"] .p-paginator .p-paginator-pages .p-paginator-page.p-highlight {
+    background: #8b5cf6 !important;
+    color: white !important;
+}
+body[data-theme-version="dark"] .p-inputtext,
+body[data-theme-version="dark"] .p-dropdown,
+body[data-theme-version="dark"] .p-inputnumber-input,
+body[data-theme-version="dark"] .p-calendar input {
+    background: #1e1e2d !important;
+    color: #e1e1e3 !important;
+    border-color: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-dropdown-panel {
+    background: #1e1e2d !important;
+    border-color: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-dropdown-items-wrapper .p-dropdown-item {
+    color: #e1e1e3 !important;
+}
+
+body[data-theme-version="dark"] .p-dropdown-items-wrapper .p-dropdown-item:hover {
+    background: #2b2b40 !important;
+}
+
+body[data-theme-version="dark"] .p-input-icon-left > i {
+    color: var(--text-muted) !important;
+}
+
+body[data-theme-version="dark"] .p-inputgroup-addon {
+    background: #242436 !important;
+    color: #a1a1a1 !important;
+    border-color: #2b2b40 !important;
+}
+
+/* Global Text Colors */
+body[data-theme-version="dark"] h1, 
+body[data-theme-version="dark"] h2, 
+body[data-theme-version="dark"] h3, 
+body[data-theme-version="dark"] h4, 
+body[data-theme-version="dark"] h5, 
+body[data-theme-version="dark"] h6,
+body[data-theme-version="dark"] p,
+body[data-theme-version="dark"] span:not(.badge):not(.p-tag-value),
+body[data-theme-version="dark"] label:not(.form-check-label) {
+    color: #e1e1e3 !important;
+}
+
+body[data-theme-version="dark"] .text-muted {
+    color: #a1a1a1 !important;
+}
+
+body[data-theme-version="dark"] .bg-light {
+    background-color: #242436 !important;
+}
+
+body[data-theme-version="dark"] .border {
+    border-color: #2b2b40 !important;
+}
+
+/* Sidebar fixes for dark mode */
+body[data-theme-version="dark"] .nav-header,
+body[data-theme-version="dark"] .dlabnav,
+body[data-theme-version="dark"] .header {
+    background: #1e1e2d !important;
+}
+
+body[data-theme-version="dark"] .metismenu a {
+    color: #a1a1a1 !important;
+}
+
+body[data-theme-version="dark"] .metismenu a:hover,
+body[data-theme-version="dark"] .metismenu .mm-active > a {
+    color: #8b5cf6 !important;
 }

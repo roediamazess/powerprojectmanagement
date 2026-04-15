@@ -1,16 +1,12 @@
 import os
 import re
 from datetime import datetime
-from typing import Any
 
 from fastapi import APIRouter, Request, Header
-from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.time_boxing import TimeBoxing
-from app.services.audit_log import write_audit_log
 
 router = APIRouter()
 
@@ -160,7 +156,7 @@ def tb_list(args: list[str]) -> str:
 def tb_get(no_str: str) -> str:
     try:
         no = int(no_str)
-    except:
+    except (TypeError, ValueError):
         return "Nomor tidak valid"
         
     user_id = os.getenv("TIME_BOXING_IMPORT_USER_ID", "1")
@@ -175,14 +171,16 @@ def tb_get(no_str: str) -> str:
             f"Priority: {t.priority}",
             f"Status: {t.status}"
         ]
-        if t.due_date: lines.append(f"Due: {t.due_date}")
-        if t.description: lines.append(f"Desc: {t.description}")
+        if t.due_date:
+            lines.append(f"Due: {t.due_date}")
+        if t.description:
+            lines.append(f"Desc: {t.description}")
         return "\n".join(lines)
 
 def tb_delete(no_str: str) -> str:
     try:
         no = int(no_str)
-    except:
+    except (TypeError, ValueError):
         return "Nomor tidak valid"
         
     user_id = os.getenv("TIME_BOXING_IMPORT_USER_ID", "1")

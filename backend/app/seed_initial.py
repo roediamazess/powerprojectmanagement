@@ -101,6 +101,15 @@ def _seed_lookup(db) -> None:
     _get_or_create_value(db, partner_status, "ACTIVE", "Active", 10)
     _get_or_create_value(db, partner_status, "INACTIVE", "Inactive", 20)
 
+    _get_or_create_category(db, "partner.implementation_type")
+    _get_or_create_category(db, "partner.system_version")
+    _get_or_create_category(db, "partner.type")
+    _get_or_create_category(db, "partner.group")
+    _get_or_create_category(db, "partner.area")
+    _get_or_create_category(db, "partner.sub_area")
+
+    _get_or_create_category(db, "project.type")
+
     project_status = _get_or_create_category(db, "project.status")
     _get_or_create_value(db, project_status, "OPEN", "Open", 10)
     _get_or_create_value(db, project_status, "IN_PROGRESS", "In Progress", 20)
@@ -256,8 +265,23 @@ def _seed_rbac(db) -> None:
     approve = _get_or_create_permission(db, "arrangements.pickup.approve", "Approve arrangement pickup")
     override_cancel = _get_or_create_permission(db, "arrangements.pickup.override_cancel", "Override cancel approved pickup")
 
+    # User & Role Management
+    u_view = _get_or_create_permission(db, "users.view", "View users list")
+    u_create = _get_or_create_permission(db, "users.create", "Create new users")
+    u_edit = _get_or_create_permission(db, "users.edit", "Edit existing users")
+    u_delete = _get_or_create_permission(db, "users.delete", "Delete users")
+    r_view = _get_or_create_permission(db, "roles.view", "View roles and permissions")
+    r_edit = _get_or_create_permission(db, "roles.edit", "Manage roles and permissions")
+
     _assign_permission(db, administrator, approve)
     _assign_permission(db, administrator, override_cancel)
+    _assign_permission(db, administrator, u_view)
+    _assign_permission(db, administrator, u_create)
+    _assign_permission(db, administrator, u_edit)
+    _assign_permission(db, administrator, u_delete)
+    _assign_permission(db, administrator, r_view)
+    _assign_permission(db, administrator, r_edit)
+
     _assign_permission(db, admin_officer, approve)
 
 
@@ -267,13 +291,17 @@ def _seed_admin(db) -> None:
     if not email or not password:
         return
     existing = db.execute(select(User).where(User.email == email)).scalar_one_or_none()
+    administrator = db.execute(select(Role).where(Role.name == "Administrator")).scalar_one()
     if existing:
+        # Don't overwrite existing user's name or password if they already exist
+        # This is important for migrated users from Laravel
+        existing.is_active = True
+        _assign_role(db, existing, administrator)
         return
+
     user = User(email=email, name="Administrator", password_hash=hash_password(password), is_active=True)
     db.add(user)
     db.flush()
-
-    administrator = db.execute(select(Role).where(Role.name == "Administrator")).scalar_one()
     _assign_role(db, user, administrator)
 
 

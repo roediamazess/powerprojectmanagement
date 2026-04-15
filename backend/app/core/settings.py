@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     env: str = "dev"
     database_url: str
+    laravel_database_url: str | None = None
     redis_url: str = "redis://redis:6379/0"
 
     api_host: str = "0.0.0.0"
@@ -28,4 +29,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

@@ -15,6 +15,7 @@ from app.models.health_score import (
     HealthScoreSurvey,
     HealthScoreTemplate,
 )
+from app.models.holidays import Holiday
 from app.models.lookup import LookupCategory, LookupValue
 from app.models.messages import Message
 from app.models.notifications import Notification
@@ -37,6 +38,7 @@ __all__ = [
     "HealthScoreSection",
     "HealthScoreSurvey",
     "HealthScoreTemplate",
+    "Holiday",
     "LookupCategory",
     "LookupValue",
     "Message",

@@ -23,6 +23,7 @@ class LookupValue(Base):
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, server_default=sa.text("gen_random_uuid()"))
     category_id: Mapped[str] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("lookup_categories.id", ondelete="CASCADE"), nullable=False)
+    parent_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("lookup_values.id", ondelete="SET NULL"), nullable=True)
     value: Mapped[str] = mapped_column(sa.Text(), nullable=False)
     label: Mapped[str] = mapped_column(sa.Text(), nullable=False)
     sort_order: Mapped[int] = mapped_column(sa.Integer(), nullable=False, server_default=sa.text("0"))
@@ -31,6 +32,7 @@ class LookupValue(Base):
     updated_at: Mapped[sa.DateTime] = mapped_column(sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.text("now()"))
 
     category: Mapped[LookupCategory] = relationship("LookupCategory", back_populates="values")
+    parent: Mapped[LookupValue | None] = relationship("LookupValue", remote_side=[id], backref="children")
 
     __table_args__ = (
         sa.UniqueConstraint("category_id", "value", name="uq_lookup_values_category_id_value"),

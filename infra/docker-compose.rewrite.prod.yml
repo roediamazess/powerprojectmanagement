@@ -32,8 +32,8 @@ services:
       COOKIE_SECURE: "true"
       COOKIE_SAMESITE: lax
       CORS_ORIGINS: https://powerpm.online
-      ADMIN_EMAIL: admin@local.test
-      ADMIN_PASSWORD: admin12345
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -48,6 +48,11 @@ services:
         "-lc",
         "python -m app.scripts.wait_for_db && alembic upgrade head && python -m app.seed_initial && uvicorn app.main:app --host 0.0.0.0 --port 8000"
       ]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3).read(); print('ok')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   worker:
     build:
@@ -92,17 +97,10 @@ services:
       context: ../frontend
       dockerfile: Dockerfile.prod
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
-      - "8080:80"
-    volumes:
-      - ../laravel-app/public/vendor:/usr/share/nginx/html/vendor:ro
-      - ../laravel-app/public/css:/usr/share/nginx/html/css:ro
-      - ../laravel-app/public/js:/usr/share/nginx/html/js:ro
-      - ../laravel-app/public/images:/usr/share/nginx/html/images:ro
-      - ../laravel-app/public/icons:/usr/share/nginx/html/icons:ro
-      - ../laravel-app/public/favicon.png:/usr/share/nginx/html/favicon.png:ro
-      - ../laravel-app/public/favicon.ico:/usr/share/nginx/html/favicon.ico:ro
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:80"
     restart: unless-stopped
 
 volumes:

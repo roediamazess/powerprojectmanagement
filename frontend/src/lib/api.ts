@@ -20,10 +20,6 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => {
-    const body = response.data as any
-    if (body && typeof body === 'object' && 'data' in body && 'meta' in body && 'error' in body) {
-      response.data = body.data
-    }
     return response
   },
   (error) => {

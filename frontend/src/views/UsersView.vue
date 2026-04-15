@@ -62,34 +62,41 @@
     </div>
 
     <!-- Create/Edit Dialog -->
-    <Dialog v-model:visible="showDialog" :header="editId ? 'Edit User' : 'Create User'" :modal="true" style="width: 480px">
-      <div class="mb-3">
-        <label class="form-label">Name *</label>
-        <InputText v-model="form.name" class="w-100" />
+    <Dialog v-model:visible="showDialog" :header="editId ? 'Edit User' : 'Create User'" :modal="true" style="width: 500px" class="custom-dialog">
+      <div class="p-fluid px-4 pt-3">
+        <div class="field mb-3">
+          <label for="name" class="form-label fw-bold">Full Name *</label>
+          <InputText id="name" v-model="form.name" class="w-100" placeholder="Enter full name" />
+        </div>
+        <div class="field mb-3">
+          <label for="email" class="form-label fw-bold">Email Address *</label>
+          <InputText id="email" v-model="form.email" class="w-100" :disabled="!!editId" placeholder="user@example.com" />
+        </div>
+        <div class="field mb-3">
+          <label for="password" class="form-label fw-bold">{{ editId ? 'New Password' : 'Password *' }}</label>
+          <small v-if="editId" class="text-muted d-block mb-1">(Leave blank to keep current password)</small>
+          <InputText id="password" v-model="form.password" type="password" class="w-100" placeholder="••••••••" />
+        </div>
+        <div class="field mb-4">
+          <label for="roles" class="form-label fw-bold">Assigned Roles</label>
+          <MultiSelect
+            id="roles"
+            v-model="form.role_ids"
+            :options="allRoles"
+            optionLabel="name"
+            optionValue="id"
+            class="w-100"
+            placeholder="Select one or more roles"
+            display="chip"
+          />
+        </div>
+        <div v-if="dialogError" class="alert alert-danger py-2 small mb-3">{{ dialogError }}</div>
       </div>
-      <div class="mb-3">
-        <label class="form-label">Email *</label>
-        <InputText v-model="form.email" class="w-100" :disabled="!!editId" />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">{{ editId ? 'New Password (leave blank to keep)' : 'Password *' }}</label>
-        <InputText v-model="form.password" type="password" class="w-100" />
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Roles</label>
-        <MultiSelect
-          v-model="form.role_ids"
-          :options="allRoles"
-          optionLabel="name"
-          optionValue="id"
-          class="w-100"
-          placeholder="Select roles"
-        />
-      </div>
-      <div v-if="dialogError" class="text-danger mb-2">{{ dialogError }}</div>
       <template #footer>
-        <Button label="Cancel" severity="secondary" @click="showDialog = false" />
-        <Button :label="editId ? 'Save' : 'Create'" :loading="saving" @click="submitForm" />
+        <div class="d-flex justify-content-end gap-2 w-100 px-4 pb-3 mt-1">
+          <Button :label="editId ? 'Save Changes' : 'Create User'" :loading="saving" @click="submitForm" />
+          <Button label="Cancel" severity="secondary" outlined @click="showDialog = false" />
+        </div>
       </template>
     </Dialog>
   </div>

@@ -7,7 +7,7 @@
 
         <title inertia>{{ config('app.name', 'Power Project Management') }}</title>
 
-        <link rel="shortcut icon" type="image/png" href="{{ asset('favicon.png') }}">
+        <link rel="preload" href="{{ asset('css/style.css') }}?v={{ @filemtime(public_path('css/style.css')) }}" as="style">
         <link href="{{ asset('vendor/bootstrap-select/css/bootstrap-select.min.css') }}" rel="stylesheet">
         <link href="{{ asset('vendor/owl-carousel/owl.carousel.css') }}" rel="stylesheet">
         <link rel="stylesheet" href="{{ asset('vendor/nouislider/nouislider.min.css') }}">
@@ -15,6 +15,49 @@
         <link href="{{ asset('vendor/bootstrap-datepicker-master/css/bootstrap-datepicker.min.css') }}" rel="stylesheet">
         <link href="{{ asset('vendor/sweetalert2/sweetalert2.min.css') }}" rel="stylesheet">
         <link href="{{ asset('css/style.css') }}?v={{ @filemtime(public_path('css/style.css')) }}" rel="stylesheet">
+
+        <style>
+            /* Critical CSS to prevent FOUC */
+            body[data-theme-version="dark"] {
+                background-color: #1a1a2e !important;
+                color: #e1e1e3 !important;
+            }
+            #preloader {
+                height: 100%;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 999999;
+                background-color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            body[data-theme-version="dark"] #preloader {
+                background-color: #1a1a2e;
+            }
+            .lds-ripple {
+                display: inline-block;
+                position: relative;
+                width: 80px;
+                height: 80px;
+            }
+            .lds-ripple div {
+                position: absolute;
+                border: 4px solid #886CC0;
+                opacity: 1;
+                border-radius: 50%;
+                animation: lds-ripple 1s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+            }
+            .lds-ripple div:nth-child(2) {
+                animation-delay: -0.5s;
+            }
+            @keyframes lds-ripple {
+                0% { top: 36px; left: 36px; width: 0; height: 0; opacity: 1; }
+                100% { top: 0px; left: 0px; width: 72px; height: 72px; opacity: 0; }
+            }
+        </style>
 
         <!-- Scripts -->
         @routes

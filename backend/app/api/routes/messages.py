@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, or_, and_, func, update
@@ -8,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.deps.auth import csrf_protect, get_current_user
-from app.models.messages import SiteMessage
+from app.models.messages import Message
 from app.models.rbac import User
 from app.services.audit_log import write_audit_log
 from datetime import datetime
@@ -23,9 +22,9 @@ class MessageSend(BaseModel):
 @router.get("/threads")
 def list_threads(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     recent = db.execute(
-        select(SiteMessage)
-        .where(or_(SiteMessage.sender_id == user.id, SiteMessage.recipient_id == user.id))
-        .order_by(SiteMessage.created_at.desc())
+        select(Message)
+        .where(or_(Message.sender_id == user.id, Message.recipient_id == user.id))
+        .order_by(Message.created_at.desc())
         .limit(300)
     ).scalars().all()
 
@@ -43,11 +42,11 @@ def list_threads(db: Session = Depends(get_db), user: User = Depends(get_current
     # Count unread
     unread_counts = dict(
         db.execute(
-            select(SiteMessage.sender_id, func.count())
-            .where(SiteMessage.recipient_id == user.id)
-            .where(SiteMessage.read_at.is_(None))
-            .where(SiteMessage.sender_id.in_(other_user_ids))
-            .group_by(SiteMessage.sender_id)
+            select(Message.sender_id, func.count())
+            .where(Message.recipient_id == user.id)
+            .where(Message.read_at.is_(None))
+            .where(Message.sender_id.in_(other_user_ids))
+            .group_by(Message.sender_id)
         ).all()
     ) if other_user_ids else {}
 
@@ -89,21 +88,21 @@ def list_threads(db: Session = Depends(get_db), user: User = Depends(get_current
 @router.get("/threads/{other_id}")
 def show_thread(other_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     messages = db.execute(
-        select(SiteMessage)
+        select(Message)
         .where(
             or_(
-                and_(SiteMessage.sender_id == user.id, SiteMessage.recipient_id == other_id),
-                and_(SiteMessage.sender_id == other_id, SiteMessage.recipient_id == user.id)
+                and_(Message.sender_id == user.id, Message.recipient_id == other_id),
+                and_(Message.sender_id == other_id, Message.recipient_id == user.id)
             )
         )
-        .order_by(SiteMessage.created_at.desc())
+        .order_by(Message.created_at.desc())
         .limit(200)
     ).scalars().all()
 
     # Mark as read
     db.execute(
-        update(SiteMessage)
-        .where(SiteMessage.sender_id == other_id, SiteMessage.recipient_id == user.id, SiteMessage.read_at.is_(None))
+        update(Message)
+        .where(Message.sender_id == other_id, Message.recipient_id == user.id, Message.read_at.is_(None))
         .values(read_at=datetime.utcnow())
     )
     db.commit()
@@ -139,7 +138,7 @@ def send_message(payload: MessageSend, db: Session = Depends(get_db), user: User
     if not other:
         raise HTTPException(status_code=400, detail="Invalid recipient")
 
-    m = SiteMessage(
+    m = Message(
         sender_id=user.id,
         recipient_id=other.id,
         subject=payload.subject,

@@ -19,6 +19,7 @@ class TimeBoxing(Base):
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     partner_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("partners.id"), nullable=True)
     project_id: Mapped[str | None] = mapped_column(UUID(as_uuid=False), sa.ForeignKey("projects.id"), nullable=True)
+    user_position: Mapped[str | None] = mapped_column(sa.String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
     action_solution: Mapped[str | None] = mapped_column(sa.Text(), nullable=True)
     due_date: Mapped[sa.Date | None] = mapped_column(sa.Date(), nullable=True)

@@ -112,7 +112,7 @@ def update_role(
     return _role_row(r, db)
 
 
-@router.delete("/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{role_id}", status_code=status.HTTP_200_OK)
 def delete_role(
     role_id: str,
     db: Session = Depends(get_db),
